@@ -1,0 +1,14 @@
+{
+  "functions": {
+    "src/app/api/scrape/*": {
+      "includeFiles": "node_modules/@sparticuz/chromium/**",
+      "maxDuration": 300
+    }
+  },
+  "build": {
+    "env": {
+      "NODE_ENV": "production"
+    }
+  },
+  "routes": []
+}
