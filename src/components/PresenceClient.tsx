@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { createSupabaseClient } from "@/lib/supabaseClient";
+import { RealtimeChannel } from "@supabase/supabase-js";
 
 type Member = { id: string; name: string };
 
@@ -10,7 +11,7 @@ export default function PresenceClient() {
   const [roomCode, setRoomCode] = useState("");
   const [members, setMembers] = useState<Member[]>([]);
   const [joined, setJoined] = useState(false);
-  const channelRef = useRef<any>(null);
+  const channelRef = useRef<RealtimeChannel>(null);
 
   const supabase = createSupabaseClient();
 
