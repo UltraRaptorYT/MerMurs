@@ -25,7 +25,6 @@ export default function AdminPage() {
   const [lobbyCode, setLobbyCode] = useState("");
   const [maxPlayers, setMaxPlayers] = useState<number>(10);
 
-  // Fetch all lobbies initially
   const fetchLobbies = async () => {
     const { data, error } = await supabase
       .from("mermurs_lobby")
@@ -38,7 +37,6 @@ export default function AdminPage() {
     }
   };
 
-  // Create a new lobby
   const createLobby = async () => {
     if (!lobbyCode.trim()) {
       toast.error("Please enter a lobby code.");
@@ -54,10 +52,26 @@ export default function AdminPage() {
     } else {
       setLobbyCode("");
       setMaxPlayers(10);
+      toast.success("Lobby created successfully.");
     }
   };
 
-  // Real-time subscription
+  // Delete lobby function
+  const deleteLobby = async (lobbyId: string) => {
+    const { error } = await supabase
+      .from("mermurs_lobby")
+      .delete()
+      .eq("id", lobbyId);
+
+    if (error) {
+      console.error("Error deleting lobby:", error);
+      toast.error("Failed to delete lobby.");
+    } else {
+      toast.success("Lobby deleted successfully.");
+      fetchLobbies(); // Optional: to refresh immediately, though real-time will also update.
+    }
+  };
+
   useEffect(() => {
     fetchLobbies();
 
@@ -100,10 +114,12 @@ export default function AdminPage() {
         {lobbies.map((lobby) => (
           <Card
             key={lobby.id}
-            onClick={() => router.push(`/admin/${lobby.lobby_code}`)}
             className="cursor-pointer hover:shadow-lg transition-shadow"
           >
-            <CardContent className="p-4 space-y-2">
+            <CardContent
+              onClick={() => router.push(`/admin/${lobby.lobby_code}`)}
+              className="p-4 space-y-2"
+            >
               <div>
                 <strong>Lobby Code:</strong> {lobby.lobby_code}
               </div>
@@ -118,6 +134,14 @@ export default function AdminPage() {
                 {new Date(lobby.created_at).toLocaleString()}
               </div>
             </CardContent>
+            <div className="flex justify-end p-2">
+              <Button
+                variant="destructive"
+                onClick={() => deleteLobby(lobby.id)}
+              >
+                Delete Lobby
+              </Button>
+            </div>
           </Card>
         ))}
       </div>
