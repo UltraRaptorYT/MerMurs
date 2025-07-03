@@ -11,6 +11,7 @@ import { toast } from "sonner";
 interface Member {
   id: string;
   name: string;
+  uuid: string;
 }
 
 export default function GameLobbyPage() {
@@ -19,6 +20,7 @@ export default function GameLobbyPage() {
   const params = useParams();
   const { lobbyId } = params as { lobbyId: string };
 
+  const [playerUUID, setPlayerUUID] = useState("");
   const [playerName, setPlayerName] = useState("");
   const [members, setMembers] = useState<Member[]>([]);
   const [lobbyExists, setLobbyExists] = useState(false);
@@ -26,10 +28,12 @@ export default function GameLobbyPage() {
 
   useEffect(() => {
     const storedName = localStorage.getItem("playerName");
-    if (!storedName) {
+    const storedUUID = localStorage.getItem("playerUUID");
+    if (!storedName || !storedUUID) {
       router.push(`/join?redirect=${lobbyId}`);
     } else {
       setPlayerName(storedName);
+      setPlayerUUID(storedUUID);
     }
   }, [lobbyId, router]);
 
@@ -67,7 +71,14 @@ export default function GameLobbyPage() {
       .on("presence", { event: "sync" }, () => {
         const state = channel.presenceState();
         setMembers(
-          Object.entries(state).map(([key]) => ({ id: key, name: key }))
+          Object.entries(state).map(([key, value]) => {
+            const presence = value[0] as unknown as Member;
+            return {
+              id: key,
+              name: presence.name,
+              uuid: presence.uuid,
+            };
+          })
         );
       })
       .on("broadcast", { event: "kick" }, (payload) => {
@@ -78,7 +89,7 @@ export default function GameLobbyPage() {
       })
       .subscribe(async (status) => {
         if (status !== "SUBSCRIBED") return;
-        await channel.track({ name: playerName });
+        await channel.track({ name: playerName, uuid: playerUUID });
       });
 
     channelRef.current = channel;
@@ -96,6 +107,12 @@ export default function GameLobbyPage() {
     message: string = "You have left the game.",
     messageType: "success" | "error" = "success"
   ) => {
+    const playerUUID = localStorage.getItem("playerUUID");
+
+    if (playerUUID) {
+      await supabase.from("mermurs_players").delete().eq("id", playerUUID);
+    }
+
     if (channelRef.current) {
       await channelRef.current.unsubscribe();
       supabase.removeChannel(channelRef.current);
@@ -108,6 +125,23 @@ export default function GameLobbyPage() {
       toast.error(message);
     }
   };
+
+  useEffect(() => {
+    const handleBeforeUnload = async () => {
+      const playerUUID = localStorage.getItem("playerUUID");
+
+      if (playerUUID) {
+        await supabase.from("mermurs_players").delete().eq("id", playerUUID);
+      }
+      toast.error("hi");
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, []);
 
   if (!playerName || !lobbyExists) {
     return <div className="p-6">Loading...</div>;

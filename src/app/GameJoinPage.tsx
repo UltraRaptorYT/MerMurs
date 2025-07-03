@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { createSupabaseClient } from "@/lib/supabaseClient";
 import { toast } from "sonner";
+import { v4 as uuidv4 } from "uuid";
 
 export default function GameJoinPage() {
   const router = useRouter();
@@ -44,6 +45,25 @@ export default function GameJoinPage() {
       return;
     }
 
+    const playerUUID = uuidv4();
+
+    const { error: insertError } = await supabase
+      .from("mermurs_players")
+      .insert([
+        {
+          id: playerUUID,
+          lobby_code: lobbyCode.trim(),
+          player_name: name.trim(),
+        },
+      ]);
+
+    if (insertError) {
+      toast.error("This name is already taken in the lobby.");
+      setLoading(false);
+      return;
+    }
+
+    localStorage.setItem("playerUUID", playerUUID);
     localStorage.setItem("playerName", name.trim());
     router.push(`/game/${lobbyCode.trim()}`);
   };

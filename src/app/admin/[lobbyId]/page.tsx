@@ -21,6 +21,7 @@ interface Lobby {
 interface Member {
   id: string;
   name: string;
+  uuid: string;
 }
 
 export default function AdminLobbyPage() {
@@ -84,7 +85,14 @@ export default function AdminLobbyPage() {
       .on("presence", { event: "sync" }, () => {
         const state = channel.presenceState();
         setMembers(
-          Object.entries(state).map(([key]) => ({ id: key, name: key }))
+          Object.entries(state).map(([key, value]) => {
+            const presence = value[0] as unknown as Member;
+            return {
+              id: key,
+              name: presence.name,
+              uuid: presence.uuid,
+            };
+          })
         );
       })
       .subscribe(async (status) => {
