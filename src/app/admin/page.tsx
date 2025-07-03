@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { createSupabaseClient } from "@/lib/supabaseClient";
+import ProtectedAdminRoute from "@/components/ProtectedAdminRoute";
 
 interface Lobby {
   id: string;
@@ -92,59 +93,59 @@ export default function AdminPage() {
   }, []);
 
   return (
-    <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-bold">Admin Lobby Page</h1>
-
-      <div className="space-y-4">
-        <Input
-          placeholder="Enter Lobby Code"
-          value={lobbyCode}
-          onChange={(e) => setLobbyCode(e.target.value)}
-        />
-        <Input
-          type="number"
-          placeholder="Max Players"
-          value={maxPlayers}
-          onChange={(e) => setMaxPlayers(Number(e.target.value))}
-        />
-        <Button onClick={createLobby}>Create New Lobby</Button>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {lobbies.map((lobby) => (
-          <Card
-            key={lobby.id}
-            className="cursor-pointer hover:shadow-lg transition-shadow"
-          >
-            <CardContent
-              onClick={() => router.push(`/admin/${lobby.lobby_code}`)}
-              className="p-4 space-y-2"
+    <ProtectedAdminRoute>
+      <div className="p-6 space-y-6">
+        <h1 className="text-2xl font-bold">Admin Lobby Page</h1>
+        <div className="space-y-4">
+          <Input
+            placeholder="Enter Lobby Code"
+            value={lobbyCode}
+            onChange={(e) => setLobbyCode(e.target.value)}
+          />
+          <Input
+            type="number"
+            placeholder="Max Players"
+            value={maxPlayers}
+            onChange={(e) => setMaxPlayers(Number(e.target.value))}
+          />
+          <Button onClick={createLobby}>Create New Lobby</Button>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {lobbies.map((lobby) => (
+            <Card
+              key={lobby.id}
+              className="cursor-pointer hover:shadow-lg transition-shadow"
             >
-              <div>
-                <strong>Lobby Code:</strong> {lobby.lobby_code}
-              </div>
-              <div>
-                <strong>Status:</strong> {lobby.status}
-              </div>
-              <div>
-                <strong>Max Players:</strong> {lobby.max_players}
-              </div>
-              <div>
-                <strong>Created At:</strong>{" "}
-                {new Date(lobby.created_at).toLocaleString()}
-              </div>
-            </CardContent>
-            <div className="flex justify-end p-2">
-              <Button
-                variant="destructive"
-                onClick={() => deleteLobby(lobby.id)}
+              <CardContent
+                onClick={() => router.push(`/admin/${lobby.lobby_code}`)}
+                className="p-4 space-y-2"
               >
-                Delete Lobby
-              </Button>
-            </div>
-          </Card>
-        ))}
+                <div>
+                  <strong>Lobby Code:</strong> {lobby.lobby_code}
+                </div>
+                <div>
+                  <strong>Status:</strong> {lobby.status}
+                </div>
+                <div>
+                  <strong>Max Players:</strong> {lobby.max_players}
+                </div>
+                <div>
+                  <strong>Created At:</strong>{" "}
+                  {new Date(lobby.created_at).toLocaleString()}
+                </div>
+              </CardContent>
+              <div className="flex justify-end p-2">
+                <Button
+                  variant="destructive"
+                  onClick={() => deleteLobby(lobby.id)}
+                >
+                  Delete Lobby
+                </Button>
+              </div>
+            </Card>
+          ))}
+        </div>
       </div>
-    </div>
+    </ProtectedAdminRoute>
   );
 }

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import { RealtimeChannel } from "@supabase/supabase-js";
+import ProtectedAdminRoute from "@/components/ProtectedAdminRoute";
 
 interface Lobby {
   id: string;
@@ -123,52 +124,51 @@ export default function AdminLobbyPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-bold">Admin Lobby: {lobby.lobby_code}</h1>
-
-      <Card>
-        <CardContent className="p-4 space-y-2">
-          <div>
-            <strong>Lobby Code:</strong> {lobby.lobby_code}
-          </div>
-          <div>
-            <strong>Status:</strong> {lobby.status}
-          </div>
-          <div>
-            <strong>Max Players:</strong> {lobby.max_players}
-          </div>
-          <div>
-            <strong>Created At:</strong>{" "}
-            {new Date(lobby.created_at).toLocaleString()}
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="space-x-4">
-        <Button onClick={() => updateStatus("waiting")}>Set Waiting</Button>
-        <Button onClick={() => updateStatus("in_progress")}>
-          Set In Progress
-        </Button>
-        <Button onClick={() => updateStatus("ended")}>Set Ended</Button>
+    <ProtectedAdminRoute>
+      <div className="p-6 space-y-6">
+        <h1 className="text-2xl font-bold">Admin Lobby: {lobby.lobby_code}</h1>
+        <Card>
+          <CardContent className="p-4 space-y-2">
+            <div>
+              <strong>Lobby Code:</strong> {lobby.lobby_code}
+            </div>
+            <div>
+              <strong>Status:</strong> {lobby.status}
+            </div>
+            <div>
+              <strong>Max Players:</strong> {lobby.max_players}
+            </div>
+            <div>
+              <strong>Created At:</strong>{" "}
+              {new Date(lobby.created_at).toLocaleString()}
+            </div>
+          </CardContent>
+        </Card>
+        <div className="space-x-4">
+          <Button onClick={() => updateStatus("waiting")}>Set Waiting</Button>
+          <Button onClick={() => updateStatus("in_progress")}>
+            Set In Progress
+          </Button>
+          <Button onClick={() => updateStatus("ended")}>Set Ended</Button>
+        </div>
+        <div className="mt-6">
+          <h2 className="text-xl font-semibold">Subscribed Members:</h2>
+          <ul className="list-disc list-inside space-y-2">
+            {members.map((member) => (
+              <li key={member.id} className="flex items-center justify-between">
+                {member.name}
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => kickMember(member.id)}
+                >
+                  Kick
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
-
-      <div className="mt-6">
-        <h2 className="text-xl font-semibold">Subscribed Members:</h2>
-        <ul className="list-disc list-inside space-y-2">
-          {members.map((member) => (
-            <li key={member.id} className="flex items-center justify-between">
-              {member.name}
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => kickMember(member.id)}
-              >
-                Kick
-              </Button>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </div>
+    </ProtectedAdminRoute>
   );
 }
