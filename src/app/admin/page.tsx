@@ -8,15 +8,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { createSupabaseClient } from "@/lib/supabaseClient";
 import ProtectedAdminRoute from "@/components/ProtectedAdminRoute";
-
-interface Lobby {
-  id: string;
-  lobby_code: string;
-  status: string;
-  max_players: number;
-  created_at: string;
-  updated_at: string;
-}
+import { Lobby } from "@/types";
 
 export default function AdminPage() {
   const supabase = createSupabaseClient();
@@ -24,7 +16,7 @@ export default function AdminPage() {
 
   const [lobbies, setLobbies] = useState<Lobby[]>([]);
   const [lobbyCode, setLobbyCode] = useState("");
-  const [maxPlayers, setMaxPlayers] = useState<number>(10);
+  const [chainLength, setChainLength] = useState<number>(6);
 
   const fetchLobbies = async () => {
     const { data, error } = await supabase
@@ -46,13 +38,13 @@ export default function AdminPage() {
 
     const { error } = await supabase
       .from("mermurs_lobby")
-      .insert([{ lobby_code: lobbyCode.trim(), max_players: maxPlayers }]);
+      .insert([{ lobby_code: lobbyCode.trim(), chain_length: chainLength }]);
 
     if (error) {
       console.error("Error creating lobby:", error);
     } else {
       setLobbyCode("");
-      setMaxPlayers(10);
+      setChainLength(10);
       toast.success("Lobby created successfully.");
     }
   };
@@ -70,6 +62,24 @@ export default function AdminPage() {
     } else {
       toast.success("Lobby deleted successfully.");
       fetchLobbies(); // Optional: to refresh immediately, though real-time will also update.
+    }
+  };
+
+  const updateLobby = async (
+    lobbyId: string,
+    status: string,
+    chainLength: number
+  ) => {
+    const { error } = await supabase
+      .from("mermurs_lobby")
+      .update({ status, chain_length: chainLength })
+      .eq("id", lobbyId);
+
+    if (error) {
+      console.error("Error updating lobby:", error);
+      toast.error("Failed to update lobby.");
+    } else {
+      toast.success("Lobby updated successfully.");
     }
   };
 
@@ -103,10 +113,11 @@ export default function AdminPage() {
             onChange={(e) => setLobbyCode(e.target.value)}
           />
           <Input
-            type="number"
+            type="text"
+            pattern="/d+"
             placeholder="Max Players"
-            value={maxPlayers}
-            onChange={(e) => setMaxPlayers(Number(e.target.value))}
+            value={chainLength}
+            onChange={(e) => setChainLength(Number(e.target.value))}
           />
           <Button onClick={createLobby}>Create New Lobby</Button>
         </div>
@@ -127,7 +138,7 @@ export default function AdminPage() {
                   <strong>Status:</strong> {lobby.status}
                 </div>
                 <div>
-                  <strong>Max Players:</strong> {lobby.max_players}
+                  <strong>Chain Length:</strong> {lobby.chain_length}
                 </div>
                 <div>
                   <strong>Created At:</strong>{" "}

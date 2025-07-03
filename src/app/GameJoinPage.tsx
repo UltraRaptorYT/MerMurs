@@ -63,8 +63,8 @@ export default function GameJoinPage() {
       return;
     }
 
-    localStorage.setItem("playerUUID", playerUUID);
-    localStorage.setItem("playerName", name.trim());
+    sessionStorage.setItem("playerUUID", playerUUID);
+    sessionStorage.setItem("playerName", name.trim());
     router.push(`/game/${lobbyCode.trim()}`);
   };
 

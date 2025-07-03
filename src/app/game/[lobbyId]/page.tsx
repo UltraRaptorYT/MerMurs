@@ -7,12 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { RealtimeChannel } from "@supabase/supabase-js";
 import { toast } from "sonner";
-
-interface Member {
-  id: string;
-  name: string;
-  uuid: string;
-}
+import { Member } from "@/types";
 
 export default function GameLobbyPage() {
   const supabase = createSupabaseClient();
@@ -25,10 +20,12 @@ export default function GameLobbyPage() {
   const [members, setMembers] = useState<Member[]>([]);
   const [lobbyExists, setLobbyExists] = useState(false);
   const channelRef = useRef<RealtimeChannel | null>(null);
+  const [roomStatus, setRoomStatus] = useState("");
+  const [round, setRound] = useState<number>(0);
 
   useEffect(() => {
-    const storedName = localStorage.getItem("playerName");
-    const storedUUID = localStorage.getItem("playerUUID");
+    const storedName = sessionStorage.getItem("playerName");
+    const storedUUID = sessionStorage.getItem("playerUUID");
     if (!storedName || !storedUUID) {
       router.push(`/join?redirect=${lobbyId}`);
     } else {
@@ -52,6 +49,8 @@ export default function GameLobbyPage() {
         toast.error("The game has already started or ended.");
         router.push("/");
       } else {
+        setRoomStatus(data.status);
+        setRound(data.round);
         setLobbyExists(true);
       }
     };
@@ -87,6 +86,21 @@ export default function GameLobbyPage() {
           handleLeaveGame("You have been kicked from the lobby.", "error");
         }
       })
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "mermurs_lobby",
+          filter: `lobby_code=eq.${lobbyId}`,
+        },
+        (payload) => {
+          const newStatus = payload.new.status;
+          const newRound = payload.new.round;
+          setRoomStatus(newStatus);
+          setRound(newRound);
+        }
+      )
       .subscribe(async (status) => {
         if (status !== "SUBSCRIBED") return;
         await channel.track({ name: playerName, uuid: playerUUID });
@@ -107,7 +121,7 @@ export default function GameLobbyPage() {
     message: string = "You have left the game.",
     messageType: "success" | "error" = "success"
   ) => {
-    const playerUUID = localStorage.getItem("playerUUID");
+    const playerUUID = sessionStorage.getItem("playerUUID");
 
     if (playerUUID) {
       await supabase.from("mermurs_players").delete().eq("id", playerUUID);
@@ -117,7 +131,7 @@ export default function GameLobbyPage() {
       await channelRef.current.unsubscribe();
       supabase.removeChannel(channelRef.current);
     }
-    localStorage.removeItem("playerName");
+    sessionStorage.removeItem("playerName");
     router.push("/");
     if (messageType === "success") {
       toast.success(message);
@@ -128,7 +142,7 @@ export default function GameLobbyPage() {
 
   useEffect(() => {
     const handleBeforeUnload = async () => {
-      const playerUUID = localStorage.getItem("playerUUID");
+      const playerUUID = sessionStorage.getItem("playerUUID");
 
       if (playerUUID) {
         await supabase.from("mermurs_players").delete().eq("id", playerUUID);
@@ -149,6 +163,10 @@ export default function GameLobbyPage() {
 
   return (
     <div className="p-6 space-y-6">
+      <h3 className="text-lg font-semibold">
+        Current Room Status: {roomStatus}
+      </h3>
+      <h3 className="text-lg font-semibold">Current Round: {round}</h3>
       <h1 className="text-2xl font-bold">Lobby: {lobbyId}</h1>
       <h2 className="text-lg">Welcome, {playerName}</h2>
 

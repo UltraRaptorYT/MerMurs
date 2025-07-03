@@ -18,7 +18,7 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    const storedAuth = localStorage.getItem("admin-authenticated");
+    const storedAuth = sessionStorage.getItem("admin-authenticated");
     if (storedAuth === "true") {
       setIsAuthenticated(true);
     }
@@ -27,7 +27,7 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
   const login = (password: string) => {
     if (password === ADMIN_PASSWORD) {
       setIsAuthenticated(true);
-      localStorage.setItem("admin-authenticated", "true");
+      sessionStorage.setItem("admin-authenticated", "true");
       return true;
     }
     return false;
@@ -35,7 +35,7 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = () => {
     setIsAuthenticated(false);
-    localStorage.removeItem("admin-authenticated");
+    sessionStorage.removeItem("admin-authenticated");
   };
 
   return (

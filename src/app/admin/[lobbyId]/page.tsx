@@ -8,21 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import { RealtimeChannel } from "@supabase/supabase-js";
 import ProtectedAdminRoute from "@/components/ProtectedAdminRoute";
-
-interface Lobby {
-  id: string;
-  lobby_code: string;
-  status: string;
-  max_players: number;
-  created_at: string;
-  updated_at: string;
-}
-
-interface Member {
-  id: string;
-  name: string;
-  uuid: string;
-}
+import { Lobby, Member } from "@/types";
 
 export default function AdminLobbyPage() {
   const supabase = createSupabaseClient();
@@ -47,6 +33,18 @@ export default function AdminLobbyPage() {
     }
   };
 
+  const startGame = async () => {
+    await updateStatus("start_game");
+    const { error } = await supabase
+      .from("mermurs_lobby")
+      .update({ round: 1 })
+      .eq("lobby_code", lobbyId);
+    if (error) {
+      console.error("Error updating status:", error);
+      toast.error("Failed to update status.");
+    }
+  };
+
   const updateStatus = async (newStatus: string) => {
     const { error } = await supabase
       .from("mermurs_lobby")
@@ -57,6 +55,8 @@ export default function AdminLobbyPage() {
       console.error("Error updating status:", error);
       toast.error("Failed to update status.");
     }
+
+    toast.success(`Updated lobby to ${newStatus}`);
   };
 
   const kickMember = async (memberId: string) => {
@@ -72,6 +72,36 @@ export default function AdminLobbyPage() {
     } catch (error) {
       console.error("Error kicking member:", error);
       toast.error("Failed to kick member.");
+    }
+  };
+
+  const nextRound = async () => {
+    if (!lobby) return;
+
+    const { error } = await supabase
+      .from("mermurs_lobby")
+      .update({ round: lobby.round + 1 })
+      .eq("lobby_code", lobbyId);
+
+    if (error) {
+      console.error("Error updating round:", error);
+      toast.error("Failed to advance round.");
+    } else {
+      toast.success(`Advanced to Round ${lobby.round + 1}`);
+    }
+  };
+
+  const resetGame = async () => {
+    const { error } = await supabase
+      .from("mermurs_lobby")
+      .update({ round: 0, status: "waiting" })
+      .eq("lobby_code", lobbyId);
+
+    if (error) {
+      console.error("Error resetting game:", error);
+      toast.error("Failed to reset game.");
+    } else {
+      toast.success("Game has been reset.");
     }
   };
 
@@ -144,7 +174,10 @@ export default function AdminLobbyPage() {
               <strong>Status:</strong> {lobby.status}
             </div>
             <div>
-              <strong>Max Players:</strong> {lobby.max_players}
+              <strong>Chain Length:</strong> {lobby.chain_length}
+            </div>
+            <div>
+              <strong>Current Round:</strong> {lobby.round}
             </div>
             <div>
               <strong>Created At:</strong>{" "}
@@ -154,10 +187,22 @@ export default function AdminLobbyPage() {
         </Card>
         <div className="space-x-4">
           <Button onClick={() => updateStatus("waiting")}>Set Waiting</Button>
-          <Button onClick={() => updateStatus("in_progress")}>
+          <Button onClick={() => startGame()} disabled={members.length < 4}>
+            Start Game
+          </Button>
+          <Button
+            onClick={() => updateStatus("in_progress")}
+            disabled={members.length < 4}
+          >
             Set In Progress
           </Button>
           <Button onClick={() => updateStatus("ended")}>Set Ended</Button>
+          <Button onClick={nextRound} disabled={lobby.status !== "in_progress"}>
+            Next Round
+          </Button>
+          <Button onClick={resetGame} variant="destructive">
+            Reset Game
+          </Button>
         </div>
         <div className="mt-6">
           <h2 className="text-xl font-semibold">Subscribed Members:</h2>
