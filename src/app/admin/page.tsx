@@ -65,23 +65,23 @@ export default function AdminPage() {
     }
   };
 
-  const updateLobby = async (
-    lobbyId: string,
-    status: string,
-    chainLength: number
-  ) => {
-    const { error } = await supabase
-      .from("mermurs_lobby")
-      .update({ status, chain_length: chainLength })
-      .eq("id", lobbyId);
+  // const updateLobby = async (
+  //   lobbyId: string,
+  //   status: string,
+  //   chainLength: number
+  // ) => {
+  //   const { error } = await supabase
+  //     .from("mermurs_lobby")
+  //     .update({ status, chain_length: chainLength })
+  //     .eq("id", lobbyId);
 
-    if (error) {
-      console.error("Error updating lobby:", error);
-      toast.error("Failed to update lobby.");
-    } else {
-      toast.success("Lobby updated successfully.");
-    }
-  };
+  //   if (error) {
+  //     console.error("Error updating lobby:", error);
+  //     toast.error("Failed to update lobby.");
+  //   } else {
+  //     toast.success("Lobby updated successfully.");
+  //   }
+  // };
 
   useEffect(() => {
     fetchLobbies();
