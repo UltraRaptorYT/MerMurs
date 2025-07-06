@@ -1,7 +1,3 @@
-// components/MemberScrollBar.tsx
-"use client";
-
-import Image from "next/image";
 import React from "react";
 import { Member } from "@/types";
 import ProfilePictureDisplay from "./ProfilePictureDisplay";
@@ -13,7 +9,7 @@ interface MemberScrollBarProps {
 export default function MemberScrollBar({ members }: MemberScrollBarProps) {
   return (
     <div className="flex overflow-x-auto space-x-2">
-      {members.map((member, index) => (
+      {members.map((member) => (
         <div key={member.id} className="flex flex-col items-center px-2 pt-5">
           <ProfilePictureDisplay
             imageSrc={member.image}
