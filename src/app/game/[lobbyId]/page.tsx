@@ -3,11 +3,12 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createSupabaseClient } from "@/lib/supabaseClient";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { RealtimeChannel } from "@supabase/supabase-js";
 import { toast } from "sonner";
 import { Member } from "@/types";
+import PlayerScrollBar from "@/components/PlayerScrollBar";
+import Instructions from "@/components/Instructions";
 
 export default function GameLobbyPage() {
   const supabase = createSupabaseClient();
@@ -17,6 +18,7 @@ export default function GameLobbyPage() {
 
   const [playerUUID, setPlayerUUID] = useState("");
   const [playerName, setPlayerName] = useState("");
+  const [playerImage, setPlayerImage] = useState("");
   const [members, setMembers] = useState<Member[]>([]);
   const [lobbyExists, setLobbyExists] = useState(false);
   const channelRef = useRef<RealtimeChannel | null>(null);
@@ -26,11 +28,14 @@ export default function GameLobbyPage() {
   useEffect(() => {
     const storedName = sessionStorage.getItem("playerName");
     const storedUUID = sessionStorage.getItem("playerUUID");
-    if (!storedName || !storedUUID) {
+    const profilePicture = sessionStorage.getItem("profilePicture");
+
+    if (!storedName || !storedUUID || !profilePicture) {
       router.push(`/join?redirect=${lobbyId}`);
     } else {
       setPlayerName(storedName);
       setPlayerUUID(storedUUID);
+      setPlayerImage(profilePicture);
     }
   }, [lobbyId, router]);
 
@@ -76,6 +81,7 @@ export default function GameLobbyPage() {
               id: key,
               name: presence.name,
               uuid: presence.uuid,
+              image: presence.image,
             };
           })
         );
@@ -103,7 +109,11 @@ export default function GameLobbyPage() {
       )
       .subscribe(async (status) => {
         if (status !== "SUBSCRIBED") return;
-        await channel.track({ name: playerName, uuid: playerUUID });
+        await channel.track({
+          name: playerName,
+          uuid: playerUUID,
+          image: playerImage,
+        });
       });
 
     channelRef.current = channel;
@@ -140,33 +150,20 @@ export default function GameLobbyPage() {
     }
   };
 
-  useEffect(() => {
-    const handleBeforeUnload = async () => {
-      const playerUUID = sessionStorage.getItem("playerUUID");
-
-      if (playerUUID) {
-        await supabase.from("mermurs_players").delete().eq("id", playerUUID);
-      }
-      toast.error("hi");
-    };
-
-    window.addEventListener("beforeunload", handleBeforeUnload);
-
-    return () => {
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-    };
-  }, []);
-
   if (!playerName || !lobbyExists) {
     return <div className="p-6">Loading...</div>;
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="px-6 pt-1 space-y-6 grow flex flex-col">
+      <PlayerScrollBar members={members} />
+      <Instructions />
       <h3 className="text-lg font-semibold">
         Current Room Status: {roomStatus}
       </h3>
       <h3 className="text-lg font-semibold">Current Round: {round}</h3>
+      {/*
+
       <h1 className="text-2xl font-bold">Lobby: {lobbyId}</h1>
       <h2 className="text-lg">Welcome, {playerName}</h2>
 
@@ -179,7 +176,7 @@ export default function GameLobbyPage() {
             ))}
           </ul>
         </CardContent>
-      </Card>
+      </Card> */}
 
       <Button
         onClick={() => handleLeaveGame()}

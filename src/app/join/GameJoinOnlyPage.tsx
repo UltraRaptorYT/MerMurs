@@ -65,7 +65,7 @@ export default function GameJoinOnlyPage() {
     setLoading(true);
 
     const playerUUID = uuidv4();
-    const profilePicture = localStorage.getItem("profilePicture");
+    const profilePicture = sessionStorage.getItem("profilePicture");
 
     const { error: insertError } = await supabase
       .from("mermurs_players")
@@ -114,7 +114,7 @@ export default function GameJoinOnlyPage() {
         <ProfilePictureSelector />
 
         <Input
-          placeholder="CoolNickName"
+          placeholder="CoolNickname123"
           value={name}
           onChange={(e) => setName(e.target.value)}
           className="w-full bg-white dark:bg-white/20 focus:dark:bg-white/25 dark:placeholder-gray-100 border-2 border-white placeholder:font-semibold text-xl md:text-xl font-semibold text-center focus:ring-gray-100 focus-visible:ring-gray-100 focus-visible:outline-none focus-visible:border-0"

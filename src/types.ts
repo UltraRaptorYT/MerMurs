@@ -2,6 +2,7 @@ export interface Member {
   id: string;
   name: string;
   uuid: string;
+  image: string;
 }
 
 export interface Lobby {

@@ -1,5 +1,11 @@
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { Info } from "lucide-react";
 import React from "react";
@@ -22,6 +28,9 @@ export default function InstructionButton({
         </Button>
       </DialogTrigger>
       <DialogContent>
+        <DialogHeader className="hidden">
+          <DialogTitle>How To Play</DialogTitle>
+        </DialogHeader>
         <Instructions />
       </DialogContent>
     </Dialog>

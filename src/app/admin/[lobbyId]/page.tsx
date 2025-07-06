@@ -121,6 +121,7 @@ export default function AdminLobbyPage() {
               id: key,
               name: presence.name,
               uuid: presence.uuid,
+              image: presence.image,
             };
           })
         );

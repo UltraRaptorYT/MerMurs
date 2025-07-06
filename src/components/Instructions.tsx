@@ -8,7 +8,6 @@ import {
   type CarouselApi,
 } from "@/components/ui/carousel";
 import { motion } from "framer-motion";
-import { DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export default function ProgressDotCarousel() {
   const [api, setApi] = useState<CarouselApi | null>(null);
@@ -69,10 +68,8 @@ export default function ProgressDotCarousel() {
   );
 
   return (
-    <div className="w-full mx-auto flex flex-col space-y-5">
-      <DialogHeader>
-        <DialogTitle className="text-center">How To Play</DialogTitle>
-      </DialogHeader>
+    <div className="w-full mx-auto flex flex-col space-y-5 max-w-md">
+      <h1 className="text-center text-2xl font-bold">How To Play</h1>
       <Carousel
         setApi={setApi}
         opts={{ loop: true, align: "center" }}

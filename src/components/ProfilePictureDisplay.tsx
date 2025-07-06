@@ -4,11 +4,13 @@ import { cn } from "@/lib/utils";
 
 type ProfilePictureDisplayProps = {
   imageSrc: string;
+  alt: string;
   width: number; // Avatar circle size in px
 } & React.HTMLAttributes<HTMLDivElement>; // Accepts all standard div props
 
 export default function ProfilePictureDisplay({
   imageSrc,
+  alt,
   width,
   className,
   ...props
@@ -30,7 +32,7 @@ export default function ProfilePictureDisplay({
       >
         <Image
           src={imageSrc}
-          alt="Profile Picture"
+          alt={alt}
           width={width * 1.5} // Match the custom container width
           height={width * 1.5} // Keep it square
           className="w-full h-auto object-contain"

@@ -59,7 +59,7 @@ export default function ProfilePictureSelector() {
   const [selectedPicture, setSelectedPicture] = useState<string | null>(null);
 
   useEffect(() => {
-    const savedPicture = localStorage.getItem("profilePicture");
+    const savedPicture = sessionStorage.getItem("profilePicture");
 
     if (savedPicture) {
       setSelectedPicture(savedPicture);
@@ -67,13 +67,13 @@ export default function ProfilePictureSelector() {
       const randomPicture =
         profilePictures[Math.floor(Math.random() * profilePictures.length)];
       setSelectedPicture(randomPicture);
-      localStorage.setItem("profilePicture", randomPicture);
+      sessionStorage.setItem("profilePicture", randomPicture);
     }
   }, []);
 
   useEffect(() => {
     if (selectedPicture) {
-      localStorage.setItem("profilePicture", selectedPicture);
+      sessionStorage.setItem("profilePicture", selectedPicture);
     }
   }, [selectedPicture]);
 
@@ -95,6 +95,7 @@ export default function ProfilePictureSelector() {
       <div className="relative">
         <ProfilePictureDisplay
           imageSrc={selectedPicture || profilePictures[0]}
+          alt={"Profile Picture"}
           width={150}
         />
 
