@@ -8,6 +8,7 @@ import {
   type CarouselApi,
 } from "@/components/ui/carousel";
 import { motion } from "framer-motion";
+import Image from "next/image";
 
 export default function ProgressDotCarousel() {
   const [api, setApi] = useState<CarouselApi | null>(null);
@@ -67,6 +68,34 @@ export default function ProgressDotCarousel() {
     [api, startProgress]
   );
 
+  const instructions = [
+    {
+      img: "/MERMURS.png",
+      main: "Join the Game",
+      sub: "🖱️ Enter your name and room code to join the game lobby.",
+    },
+    {
+      img: "/MERMURS.png",
+      main: "Start with a Phrase",
+      sub: "🎧 Listen to the AI-generated audio carefully! It might be in a random language.",
+    },
+    {
+      img: "/MERMURS.png",
+      main: "Record What You Heard",
+      sub: "🎙️ Repeat what you heard by recording your version of the phrase.",
+    },
+    {
+      img: "/MERMURS.png",
+      main: "Pass It Along",
+      sub: "🔁 The AI will transcribe and translate your recording for the next player.",
+    },
+    {
+      img: "/MERMURS.png",
+      main: "See What Happened",
+      sub: "😂 Watch and listen to the hilarious results at the end of the game!",
+    },
+  ];
+
   return (
     <div className="w-full mx-auto flex flex-col space-y-5 max-w-md">
       <h1 className="text-center text-2xl font-bold">How To Play</h1>
@@ -76,11 +105,23 @@ export default function ProgressDotCarousel() {
         className="relative"
       >
         <CarouselContent>
-          {Array.from({ length: 5 }).map((_, index) => (
-            <CarouselItem key={index}>
-              <div className="h-64 grid place-items-center text-4xl font-bold bg-pink-500">
-                {index + 1}
+          {instructions.map((val, index) => (
+            <CarouselItem
+              key={index}
+              className="flex flex-col justify-center items-center space-y-2"
+            >
+              <Image
+                src={val["img"]}
+                alt={val["main"]}
+                width={100}
+                height={100}
+                className="w-48"
+              />
+              <div className="flex gap-1 text-xl font-semibold text-center mt-6">
+                <span>{index + 1}.</span>
+                <span>{val["main"]}</span>
               </div>
+              <span className="text-center px-6">{val["sub"]}</span>
             </CarouselItem>
           ))}
         </CarouselContent>
