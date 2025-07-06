@@ -16,7 +16,7 @@ export default function MemberScrollBar({ members }: MemberScrollBarProps) {
             alt={member.name}
             width={48}
           />
-          <span className="text-white text-sm font-bold">{member.name}</span>
+          <span className="text-white text-xs font-bold text-ellipsis text-center overflow-hidden w-12">{member.name}</span>
         </div>
       ))}
     </div>
