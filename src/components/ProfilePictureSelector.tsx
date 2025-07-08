@@ -78,12 +78,11 @@ export default function ProfilePictureSelector() {
   }, [selectedPicture]);
 
   const handleRandomise = () => {
-    // Filter out the current image
+    console.log("h");
     const availablePictures = profilePictures.filter(
       (picture) => picture !== selectedPicture
     );
 
-    // Randomly select from the remaining options
     const randomPicture =
       availablePictures[Math.floor(Math.random() * availablePictures.length)];
 
@@ -101,6 +100,7 @@ export default function ProfilePictureSelector() {
 
         <Button
           onClick={handleRandomise}
+          type="button"
           size={"icon"}
           variant={"ghost"}
           className="absolute bottom-0.5 -right-0.5 bg-white rounded-full p-1 border-4 dark:hover:bg-white/75 border-white shadow-md z-20"

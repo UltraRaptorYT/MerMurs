@@ -125,23 +125,23 @@ export default function GameJoinOnlyPage() {
       />
       <form
         onSubmit={handleJoin}
-        className="glassy p-6 w-full max-w-xl flex flex-col items-center space-y-6 mb-10"
+        className="w-full grow justify-center items-center flex flex-col"
       >
-        <p className="text-xl font-semibold text-center">Ready to Join?</p>
-
-        <ProfilePictureSelector />
-
-        <Input
-          placeholder="CoolNickname123"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="w-full bg-white dark:bg-white/20 focus:dark:bg-white/25 dark:placeholder-gray-100 border-2 border-white placeholder:font-semibold text-xl md:text-xl font-semibold text-center focus:ring-gray-100 focus-visible:ring-gray-100 focus-visible:outline-none focus-visible:border-0"
-        />
+        <div className="glassy p-6 w-full max-w-xl flex flex-col items-center space-y-6 mb-10 my-auto">
+          <p className="text-xl font-semibold text-center">Ready to Join?</p>
+          <ProfilePictureSelector />
+          <Input
+            placeholder="CoolNickname123"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="w-full bg-white dark:bg-white/20 focus:dark:bg-white/25 dark:placeholder-gray-100 border-2 border-white placeholder:font-semibold text-xl md:text-xl font-semibold text-center focus:ring-gray-100 focus-visible:ring-gray-100 focus-visible:outline-none focus-visible:border-0"
+          />
+        </div>
 
         <Button
           type="submit"
           disabled={loading}
-          className="justify-self-end text-base font-bold"
+          className="justify-self-end text-base font-bold mt-auto"
           size={"lg"}
         >
           {loading ? (
