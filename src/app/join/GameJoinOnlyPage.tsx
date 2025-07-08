@@ -24,6 +24,20 @@ export default function GameJoinOnlyPage() {
   const [lobbyExists, setLobbyExists] = useState<boolean | null>(null); // null: loading, false: invalid, true: valid
   const [currentGameId, setCurrentGameId] = useState<string | null>(null);
 
+  const requestMicrophoneAccess = async () => {
+    try {
+      await navigator.mediaDevices.getUserMedia({ audio: true });
+      console.log("Microphone access granted.");
+    } catch (err) {
+      console.error("Microphone access denied.", err);
+      toast.error("Microphone access is required to play the game.");
+    }
+  };
+
+  useEffect(() => {
+    requestMicrophoneAccess();
+  }, []);
+
   useEffect(() => {
     const checkLobbyAndGame = async () => {
       if (!redirectLobby) {

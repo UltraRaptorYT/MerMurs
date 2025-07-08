@@ -247,7 +247,7 @@ export default function GameLobbyPage() {
   }
 
   return (
-    <div className="px-6 pt-1 pb-3 space-y-6 grow flex flex-col">
+    <div className="px-6 pt-1 pb-3 space-y-6 grow flex flex-col relative">
       {gameStatus === "start_game" && !countdownDone && (
         <Countdown onComplete={() => setCountdownDone(true)} />
       )}
@@ -264,12 +264,22 @@ export default function GameLobbyPage() {
               WAITING FOR THE HOST TO SET UP AND TO START THE GAME ;)
             </p>
           </div>
+          <Button
+            onClick={() => handleLeaveGame()}
+            variant="destructive"
+            className="mt-auto"
+          >
+            Leave Game
+          </Button>
         </>
       ) : (
         <>
           {/* Game has started & countdown is done */}
-          <div className="flex justify-center relative">
-            <div className="w-10 h-10 rounded-full border-2 border-white flex justify-center items-center fixed top-2.5 right-2.5">
+          <div className="flex items-center justify-between fixed top-2.5 px-2.5 left-0 right-0 w-full">
+            <p className="bg-white text-black rounded-lg py-2 px-2.5 font-semibold">
+              Round: {round}
+            </p>
+            <div className="w-10 h-10 rounded-full border-2 border-white flex justify-center items-center">
               {timerRemaining !== null && startTimeFromSupabase && (
                 <CountdownTimer
                   duration={timerRemaining}
@@ -279,6 +289,8 @@ export default function GameLobbyPage() {
                 />
               )}
             </div>
+          </div>
+          <div className="flex justify-center relative">
             <Image
               src={"/MERMURS.png"}
               width={90}
@@ -287,15 +299,11 @@ export default function GameLobbyPage() {
               className="mx-auto m-5"
             />
           </div>
+          <p>TEXT HERE</p>
+          <Button> AUDIO PLAYER</Button>
+          <Button> RECORDER</Button>
         </>
       )}
-      <Button
-        onClick={() => handleLeaveGame()}
-        variant="destructive"
-        className="mt-auto"
-      >
-        Leave Game
-      </Button>
     </div>
   );
 }
