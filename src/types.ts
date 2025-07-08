@@ -14,3 +14,27 @@ export interface Lobby {
   created_at: string;
   updated_at: string;
 }
+
+export interface Game {
+  id: string;
+  lobby_code: string;
+  status: "waiting" | "start_game" | "in_progress" | "ended";
+  created_at?: string;
+}
+
+export interface Round {
+  id: string;
+  game_id: string;
+  round_number: number;
+  created_at?: string;
+}
+
+export type SupabaseChangePayload<T> = {
+  eventType: "INSERT" | "UPDATE" | "DELETE";
+  schema: string;
+  table: string;
+  commit_timestamp: string;
+  errors?: any;
+  old: T | null;
+  new: T | null;
+};

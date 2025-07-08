@@ -8,55 +8,101 @@ import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import { RealtimeChannel } from "@supabase/supabase-js";
 import ProtectedAdminRoute from "@/components/ProtectedAdminRoute";
-import { Lobby, Member } from "@/types";
+import { Game, Member, Round } from "@/types";
+import Countdown from "@/components/Countdown";
+import CountdownTimer from "@/components/CountdownTimer";
+import { ROUND_TIMER } from "@/contants";
 
 export default function AdminLobbyPage() {
   const supabase = createSupabaseClient();
   const params = useParams();
   const { lobbyId } = params as { lobbyId: string };
 
-  const [lobby, setLobby] = useState<Lobby | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
+  const [currentGame, setCurrentGame] = useState<Game | null>(null);
+  const [rounds, setRounds] = useState<Round[]>([]);
+  const [startCountdown, setStartCountdown] = useState(false);
   const channelRef = useRef<RealtimeChannel | null>(null);
 
-  const fetchLobby = async () => {
+  const fetchCurrentGame = async () => {
     const { data, error } = await supabase
-      .from("mermurs_lobby")
+      .from("mermurs_games")
       .select("*")
       .eq("lobby_code", lobbyId)
+      .neq("status", "ended")
+      .order("created_at", { ascending: false })
+      .limit(1)
       .single();
 
-    if (error) {
-      console.error("Error fetching lobby:", error);
-    } else {
-      setLobby(data);
+    if (!error && data) {
+      setCurrentGame(data);
+      fetchRounds(data.id);
     }
   };
 
-  const startGame = async () => {
-    await updateStatus("start_game");
-    const { error } = await supabase
-      .from("mermurs_lobby")
-      .update({ round: 1 })
-      .eq("lobby_code", lobbyId);
-    if (error) {
-      console.error("Error updating status:", error);
-      toast.error("Failed to update status.");
+  const fetchRounds = async (gameId: string) => {
+    const { data, error } = await supabase
+      .from("mermurs_rounds")
+      .select("*")
+      .eq("game_id", gameId)
+      .order("round_number", { ascending: true });
+
+    if (!error && data) {
+      setRounds(data);
     }
   };
 
-  const updateStatus = async (newStatus: string) => {
-    const { error } = await supabase
-      .from("mermurs_lobby")
-      .update({ status: newStatus })
-      .eq("lobby_code", lobbyId);
+  const createGame = async () => {
+    const { data, error } = await supabase
+      .from("mermurs_games")
+      .insert([{ lobby_code: lobbyId, status: "waiting" }])
+      .select()
+      .single();
 
-    if (error) {
-      console.error("Error updating status:", error);
-      toast.error("Failed to update status.");
+    if (!error && data) {
+      toast.success("New game created");
+      setCurrentGame(data);
+      setRounds([]);
     }
+  };
 
-    toast.success(`Updated lobby to ${newStatus}`);
+  const createRound = async () => {
+    if (!currentGame) return;
+    const nextRoundNumber = rounds.length + 1;
+
+    const now = new Date().toISOString();
+
+    const { data, error } = await supabase
+      .from("mermurs_rounds")
+      .insert([
+        {
+          game_id: currentGame.id,
+          round_number: nextRoundNumber,
+          start_time: now,
+        },
+      ])
+      .select()
+      .single();
+
+    if (!error && data) {
+      toast.success(`Round ${nextRoundNumber} created`);
+      setRounds((prev) => [...prev, data]);
+    }
+  };
+
+  const updateGameStatus = async (status: string) => {
+    if (!currentGame) return;
+    const { error } = await supabase
+      .from("mermurs_games")
+      .update({ status })
+      .eq("id", currentGame.id);
+
+    if (!error) {
+      toast.success(`Game status set to ${status}`);
+      setCurrentGame(
+        (prev) => prev && { ...prev, status: status as Game["status"] }
+      );
+    }
   };
 
   const kickMember = async (memberId: string) => {
@@ -75,45 +121,42 @@ export default function AdminLobbyPage() {
     }
   };
 
-  const nextRound = async () => {
-    if (!lobby) return;
+  const resetRounds = async () => {
+    if (!currentGame) return;
 
-    const { error } = await supabase
-      .from("mermurs_lobby")
-      .update({ round: lobby.round + 1 })
-      .eq("lobby_code", lobbyId);
+    const { error: deleteError } = await supabase
+      .from("mermurs_rounds")
+      .delete()
+      .eq("game_id", currentGame.id);
 
-    if (error) {
-      console.error("Error updating round:", error);
-      toast.error("Failed to advance round.");
-    } else {
-      toast.success(`Advanced to Round ${lobby.round + 1}`);
+    if (deleteError) {
+      toast.error("Failed to reset rounds.");
+      return;
     }
+    setRounds([]);
   };
 
-  const resetGame = async () => {
-    const { error } = await supabase
-      .from("mermurs_lobby")
-      .update({ round: 0, status: "waiting" })
-      .eq("lobby_code", lobbyId);
+  const startGame = async () => {
+    await resetRounds();
+    await updateGameStatus("start_game");
+    setStartCountdown(true);
+  };
 
-    if (error) {
-      console.error("Error resetting game:", error);
-      toast.error("Failed to reset game.");
-    } else {
-      toast.success("Game has been reset.");
-    }
+  const endGame = async () => {
+    await updateGameStatus("ended");
+    setCurrentGame(null);
+    setRounds([]);
   };
 
   useEffect(() => {
-    fetchLobby();
+    fetchCurrentGame();
 
-    const channel = supabase
+    const presenceChannel = supabase
       .channel(`presence-lobby:${lobbyId}`, {
         config: { presence: { key: `admin-${lobbyId}` } },
       })
       .on("presence", { event: "sync" }, () => {
-        const state = channel.presenceState();
+        const state = presenceChannel.presenceState();
         setMembers(
           Object.entries(state).map(([key, value]) => {
             const presence = value[0] as unknown as Member;
@@ -126,85 +169,115 @@ export default function AdminLobbyPage() {
           })
         );
       })
-      .subscribe(async (status) => {
-        if (status !== "SUBSCRIBED") return;
-      });
-
-    channelRef.current = channel;
-
-    const lobbyChannel = supabase
-      .channel(`lobby-${lobbyId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "mermurs_lobby",
-          filter: `lobby_code=eq.${lobbyId}`,
-        },
-        () => {
-          fetchLobby();
-        }
-      )
       .subscribe();
+
+    channelRef.current = presenceChannel;
 
     return () => {
       if (channelRef.current) {
-        const chan = channelRef.current;
-        chan.unsubscribe();
-        supabase.removeChannel(chan);
+        channelRef.current.unsubscribe();
+        supabase.removeChannel(channelRef.current);
       }
-      supabase.removeChannel(lobbyChannel);
     };
   }, [lobbyId]);
 
-  if (!lobby) {
-    return <div className="p-6">Loading lobby...</div>;
-  }
+  const countdownComplete = async () => {
+    if (!currentGame) return;
+
+    const now = new Date().toISOString();
+
+    const { data: newRound, error } = await supabase
+      .from("mermurs_rounds")
+      .insert([
+        {
+          game_id: currentGame.id,
+          round_number: 1,
+          start_time: now,
+        },
+      ])
+      .select()
+      .single();
+
+    if (error) {
+      toast.error("Failed to create Round 1.");
+      return;
+    }
+
+    setRounds([newRound]);
+    await updateGameStatus("in_progress");
+    setStartCountdown(false);
+  };
+
+  const updateWaiting = async () => {
+    await resetRounds();
+    await updateGameStatus("waiting");
+  };
 
   return (
     <ProtectedAdminRoute>
       <div className="p-6 space-y-6">
-        <h1 className="text-2xl font-bold">Admin Lobby: {lobby.lobby_code}</h1>
-        <Card>
-          <CardContent className="p-4 space-y-2">
-            <div>
-              <strong>Lobby Code:</strong> {lobby.lobby_code}
-            </div>
-            <div>
-              <strong>Status:</strong> {lobby.status}
-            </div>
-            <div>
-              <strong>Chain Length:</strong> {lobby.chain_length}
-            </div>
-            <div>
-              <strong>Current Round:</strong> {lobby.round}
-            </div>
-            <div>
-              <strong>Created At:</strong>{" "}
-              {new Date(lobby.created_at).toLocaleString()}
-            </div>
-          </CardContent>
-        </Card>
-        <div className="space-x-4">
-          <Button onClick={() => updateStatus("waiting")}>Set Waiting</Button>
-          <Button onClick={() => startGame()} disabled={members.length < 4}>
-            Start Game
-          </Button>
-          <Button
-            onClick={() => updateStatus("in_progress")}
-            disabled={members.length < 4}
-          >
-            Set In Progress
-          </Button>
-          <Button onClick={() => updateStatus("ended")}>Set Ended</Button>
-          <Button onClick={nextRound} disabled={lobby.status !== "in_progress"}>
-            Next Round
-          </Button>
-          <Button onClick={resetGame} variant="destructive">
-            Reset Game
-          </Button>
+        {startCountdown && <Countdown onComplete={countdownComplete} />}
+
+        <h1 className="text-2xl font-bold">Admin Lobby: {lobbyId}</h1>
+        <div className="w-10 h-10 rounded-full border-2 border-white flex justify-center items-center fixed top-2.5 right-2.5">
+          {/* {!startCountdown && roundStartTime && timerRemaining !== null && (
+            <CountdownTimer
+              key={roundStartTime}
+              duration={timerRemaining}
+              startTime={Date.parse(roundStartTime)}
+              size={24}
+              onComplete={() => console.log("Done!")}
+            />
+          )} */}
         </div>
+        {!currentGame ? (
+          <Button onClick={createGame}>Create New Game</Button>
+        ) : (
+          <>
+            <Card>
+              <CardContent className="p-4 space-y-2">
+                <div>
+                  <strong>Game ID:</strong> {currentGame.id}
+                </div>
+                <div>
+                  <strong>Status:</strong> {currentGame.status}
+                </div>
+                <div>
+                  <strong>Rounds:</strong> {rounds.length}
+                </div>
+                <div>
+                  <strong>Number of Players:</strong> {members.length}
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="space-x-4">
+              <Button onClick={updateWaiting}>Set Waiting</Button>
+              <Button onClick={startGame} disabled={members.length < 4}>
+                Start Game
+              </Button>
+              <Button
+                onClick={createRound}
+                disabled={currentGame.status !== "in_progress"}
+              >
+                Next Round
+              </Button>
+              <Button onClick={endGame} variant="destructive">
+                End Game
+              </Button>
+            </div>
+
+            <div className="mt-6">
+              <h2 className="text-xl font-semibold">Rounds:</h2>
+              <ul className="list-disc list-inside space-y-1">
+                {rounds.map((round) => (
+                  <li key={round.id}>Round {round.round_number}</li>
+                ))}
+              </ul>
+            </div>
+          </>
+        )}
+
         <div className="mt-6">
           <h2 className="text-xl font-semibold">Subscribed Members:</h2>
           <ul className="list-disc list-inside space-y-2">

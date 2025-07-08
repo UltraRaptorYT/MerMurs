@@ -18,7 +18,9 @@ export default function GameJoinPage() {
   const [lobbyCode, setLobbyCode] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleEnterLobby = async () => {
+  const handleEnterLobby = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault(); // Prevent form default refresh behavior
+
     if (!lobbyCode.trim()) {
       toast.error("Please enter the lobby code.");
       return;
@@ -26,25 +28,36 @@ export default function GameJoinPage() {
 
     setLoading(true);
 
-    const { data, error } = await supabase
+    // 1. Check if the lobby exists
+    const { data: lobby, error: lobbyError } = await supabase
       .from("mermurs_lobby")
-      .select("*")
+      .select("lobby_code")
       .eq("lobby_code", lobbyCode.trim())
       .single();
 
-    if (error || !data) {
+    if (lobbyError || !lobby) {
       toast.error("Lobby not found. Please check the code.");
       setLoading(false);
       return;
     }
 
-    if (data.status !== "waiting") {
-      toast.error("The game has already started or ended.");
+    // 2. Check for an active game with status 'waiting'
+    const { data: game, error: gameError } = await supabase
+      .from("mermurs_games")
+      .select("*")
+      .eq("lobby_code", lobbyCode.trim())
+      .eq("status", "waiting")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+
+    if (gameError || !game) {
+      toast.error("No joinable game found in this lobby.");
       setLoading(false);
       return;
     }
 
-    // If lobby is valid and waiting, proceed to join page
+    // 3. All good, proceed
     router.push(`/join?redirect=${lobbyCode.trim()}`);
   };
 
@@ -58,7 +71,10 @@ export default function GameJoinPage() {
         alt={"MerMurs Logo"}
         className="mx-auto"
       />
-      <div className="glassy p-6 w-full max-w-xl flex flex-col items-center space-y-6 mb-10">
+      <form
+        onSubmit={handleEnterLobby}
+        className="glassy p-6 w-full max-w-xl flex flex-col items-center space-y-6 mb-10"
+      >
         <p className="text-xl font-semibold text-center">Welcome to MerMurs!</p>
 
         <ProfilePictureSelector />
@@ -69,23 +85,23 @@ export default function GameJoinPage() {
           onChange={(e) => setLobbyCode(e.target.value)}
           className="w-full bg-white dark:bg-white/20 focus:dark:bg-white/25 dark:placeholder-gray-100 border-2 border-white placeholder:font-semibold text-xl md:text-xl font-semibold text-center focus:ring-gray-100 focus-visible:ring-gray-100 focus-visible:outline-none focus-visible:border-0"
         />
-      </div>
 
-      <Button
-        onClick={handleEnterLobby}
-        disabled={loading}
-        className="justify-self-end text-base mb-5 font-bold"
-        size={"lg"}
-      >
-        {loading ? (
-          <span>Checking...</span>
-        ) : (
-          <div className="flex items-center justify-between gap-2.5">
-            <FaPlay />
-            <span>START</span>
-          </div>
-        )}
-      </Button>
+        <Button
+          type="submit"
+          disabled={loading}
+          className="justify-self-end text-base font-bold"
+          size={"lg"}
+        >
+          {loading ? (
+            <span>Checking...</span>
+          ) : (
+            <div className="flex items-center justify-between gap-2.5">
+              <FaPlay />
+              <span>START</span>
+            </div>
+          )}
+        </Button>
+      </form>
     </div>
   );
 }

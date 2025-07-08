@@ -22,41 +22,55 @@ export default function GameJoinOnlyPage() {
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [lobbyExists, setLobbyExists] = useState<boolean | null>(null); // null: loading, false: invalid, true: valid
+  const [currentGameId, setCurrentGameId] = useState<string | null>(null);
 
-  // Check if lobby exists on initial load
   useEffect(() => {
-    const checkLobby = async () => {
+    const checkLobbyAndGame = async () => {
       if (!redirectLobby) {
         toast.error("No lobby code provided.");
         router.push("/");
         return;
       }
 
-      const { data, error } = await supabase
+      const lobbyCode = redirectLobby.trim();
+
+      const { data: lobby, error: lobbyError } = await supabase
         .from("mermurs_lobby")
-        .select("*")
-        .eq("lobby_code", redirectLobby.trim())
+        .select("lobby_code")
+        .eq("lobby_code", lobbyCode)
         .single();
 
-      if (error || !data) {
+      if (lobbyError || !lobby) {
         toast.error("Lobby not found.");
         router.push("/");
         return;
       }
 
-      if (data.status !== "waiting") {
-        toast.error("The game has already started or ended.");
+      const { data: game, error: gameError } = await supabase
+        .from("mermurs_games")
+        .select("id, status")
+        .eq("lobby_code", lobbyCode)
+        .eq("status", "waiting")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
+
+      if (gameError || !game) {
+        toast.error("No available game to join.");
         router.push("/");
         return;
       }
 
+      setCurrentGameId(game.id);
       setLobbyExists(true);
     };
 
-    checkLobby();
+    checkLobbyAndGame();
   }, [redirectLobby, router, supabase]);
 
-  const handleJoin = async () => {
+  const handleJoin = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+
     if (!name.trim()) {
       toast.error("Please enter your name.");
       return;
@@ -86,6 +100,7 @@ export default function GameJoinOnlyPage() {
 
     sessionStorage.setItem("playerUUID", playerUUID);
     sessionStorage.setItem("playerName", name.trim());
+    sessionStorage.setItem("gameId", currentGameId!);
 
     router.push(`/game/${redirectLobby!.trim()}`);
   };
@@ -108,7 +123,10 @@ export default function GameJoinOnlyPage() {
         alt={"MerMurs Logo"}
         className="mx-auto"
       />
-      <div className="glassy p-6 w-full max-w-xl flex flex-col items-center space-y-6 mb-10">
+      <form
+        onSubmit={handleJoin}
+        className="glassy p-6 w-full max-w-xl flex flex-col items-center space-y-6 mb-10"
+      >
         <p className="text-xl font-semibold text-center">Ready to Join?</p>
 
         <ProfilePictureSelector />
@@ -119,22 +137,23 @@ export default function GameJoinOnlyPage() {
           onChange={(e) => setName(e.target.value)}
           className="w-full bg-white dark:bg-white/20 focus:dark:bg-white/25 dark:placeholder-gray-100 border-2 border-white placeholder:font-semibold text-xl md:text-xl font-semibold text-center focus:ring-gray-100 focus-visible:ring-gray-100 focus-visible:outline-none focus-visible:border-0"
         />
-      </div>
-      <Button
-        onClick={handleJoin}
-        disabled={loading}
-        className="justify-self-end text-base mb-5 font-bold"
-        size={"lg"}
-      >
-        {loading ? (
-          <span>Joining...</span>
-        ) : (
-          <div className="flex items-center justify-between gap-2.5">
-            <FaPlay />
-            <span>JOIN</span>
-          </div>
-        )}
-      </Button>
+
+        <Button
+          type="submit"
+          disabled={loading}
+          className="justify-self-end text-base font-bold"
+          size={"lg"}
+        >
+          {loading ? (
+            <span>Joining...</span>
+          ) : (
+            <div className="flex items-center justify-between gap-2.5">
+              <FaPlay />
+              <span>JOIN</span>
+            </div>
+          )}
+        </Button>
+      </form>
     </div>
   );
 }

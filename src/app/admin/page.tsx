@@ -16,7 +16,6 @@ export default function AdminPage() {
 
   const [lobbies, setLobbies] = useState<Lobby[]>([]);
   const [lobbyCode, setLobbyCode] = useState("");
-  const [chainLength, setChainLength] = useState<number>(6);
 
   const fetchLobbies = async () => {
     const { data, error } = await supabase
@@ -38,13 +37,12 @@ export default function AdminPage() {
 
     const { error } = await supabase
       .from("mermurs_lobby")
-      .insert([{ lobby_code: lobbyCode.trim(), chain_length: chainLength }]);
+      .insert([{ lobby_code: lobbyCode.trim() }]);
 
     if (error) {
       console.error("Error creating lobby:", error);
     } else {
       setLobbyCode("");
-      setChainLength(10);
       toast.success("Lobby created successfully.");
     }
   };
@@ -64,24 +62,6 @@ export default function AdminPage() {
       fetchLobbies(); // Optional: to refresh immediately, though real-time will also update.
     }
   };
-
-  // const updateLobby = async (
-  //   lobbyId: string,
-  //   status: string,
-  //   chainLength: number
-  // ) => {
-  //   const { error } = await supabase
-  //     .from("mermurs_lobby")
-  //     .update({ status, chain_length: chainLength })
-  //     .eq("id", lobbyId);
-
-  //   if (error) {
-  //     console.error("Error updating lobby:", error);
-  //     toast.error("Failed to update lobby.");
-  //   } else {
-  //     toast.success("Lobby updated successfully.");
-  //   }
-  // };
 
   useEffect(() => {
     fetchLobbies();
@@ -104,24 +84,18 @@ export default function AdminPage() {
 
   return (
     <ProtectedAdminRoute>
-      <div className="p-6 space-y-6">
+      <div className="p-6 space-y-6 max-w-2xl mx-auto w-full">
         <h1 className="text-2xl font-bold">Admin Lobby Page</h1>
         <div className="space-y-4">
           <Input
             placeholder="Enter Lobby Code"
             value={lobbyCode}
             onChange={(e) => setLobbyCode(e.target.value)}
-          />
-          <Input
-            type="text"
-            pattern="/d+"
-            placeholder="Max Players"
-            value={chainLength}
-            onChange={(e) => setChainLength(Number(e.target.value))}
+            className="w-full bg-white dark:bg-white/20 focus:dark:bg-white/25 dark:placeholder-gray-100 border-2 border-white placeholder:font-semibold font-semibold focus:ring-gray-100 focus-visible:ring-gray-100 focus-visible:outline-none focus-visible:border-0"
           />
           <Button onClick={createLobby}>Create New Lobby</Button>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="flex flex-col w-full gap-4">
           {lobbies.map((lobby) => (
             <Card
               key={lobby.id}
@@ -136,9 +110,6 @@ export default function AdminPage() {
                 </div>
                 <div>
                   <strong>Status:</strong> {lobby.status}
-                </div>
-                <div>
-                  <strong>Chain Length:</strong> {lobby.chain_length}
                 </div>
                 <div>
                   <strong>Created At:</strong>{" "}

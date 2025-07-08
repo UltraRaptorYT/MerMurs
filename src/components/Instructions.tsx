@@ -97,12 +97,12 @@ export default function ProgressDotCarousel() {
   ];
 
   return (
-    <div className="w-full mx-auto flex flex-col space-y-5 max-w-md">
+    <div className="w-full mx-auto flex flex-col max-w-md space-y-4">
       <h1 className="text-center text-2xl font-bold">How To Play</h1>
       <Carousel
         setApi={setApi}
         opts={{ loop: true, align: "center" }}
-        className="relative"
+        className="relative w-full"
       >
         <CarouselContent>
           {instructions.map((val, index) => (
@@ -117,11 +117,17 @@ export default function ProgressDotCarousel() {
                 height={100}
                 className="w-48"
               />
-              <div className="flex gap-1 text-xl font-semibold text-center mt-6">
-                <span>{index + 1}.</span>
-                <span>{val["main"]}</span>
+              <div className="flex w-full text-xl font-semibold text-center mt-6 justify-center">
+                <p>{index + 1}.</p>
+                <p>{val["main"]}</p>
               </div>
-              <span className="text-center px-6">{val["sub"]}</span>
+              {/* <div className="flex flex-wrap gap-1 text-xl font-semibold text-center mt-6 w-full justify-center">
+                <p>{index + 1}.</p>
+                <p>{val["main"]}</p>
+              </div> */}
+              {/* <span className="text-center px-6">
+                {val["sub"]}
+              </span> */}
             </CarouselItem>
           ))}
         </CarouselContent>
