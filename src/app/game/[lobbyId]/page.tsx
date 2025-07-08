@@ -235,7 +235,11 @@ export default function GameLobbyPage() {
     sessionStorage.removeItem("gameId");
 
     router.push("/");
-    messageType === "success" ? toast.success(message) : toast.error(message);
+    if (messageType === "success") {
+      toast.success(message);
+    } else {
+      toast.error(message);
+    }
   };
 
   if (!playerName || !lobbyValid) {

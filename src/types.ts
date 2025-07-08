@@ -34,7 +34,7 @@ export type SupabaseChangePayload<T> = {
   schema: string;
   table: string;
   commit_timestamp: string;
-  errors?: any;
+  errors?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
   old: T | null;
   new: T | null;
 };

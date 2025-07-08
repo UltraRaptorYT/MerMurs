@@ -10,8 +10,8 @@ import { RealtimeChannel } from "@supabase/supabase-js";
 import ProtectedAdminRoute from "@/components/ProtectedAdminRoute";
 import { Game, Member, Round } from "@/types";
 import Countdown from "@/components/Countdown";
-import CountdownTimer from "@/components/CountdownTimer";
-import { ROUND_TIMER } from "@/contants";
+// import CountdownTimer from "@/components/CountdownTimer";
+// import { ROUND_TIMER } from "@/contants";
 
 export default function AdminLobbyPage() {
   const supabase = createSupabaseClient();
