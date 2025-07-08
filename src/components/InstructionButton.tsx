@@ -27,7 +27,7 @@ export default function InstructionButton({
           <Info className="size-8" strokeWidth={2.5} />
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="w-full">
         <DialogHeader className="hidden">
           <DialogTitle>How To Play</DialogTitle>
         </DialogHeader>

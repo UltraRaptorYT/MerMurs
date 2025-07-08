@@ -97,44 +97,37 @@ export default function ProgressDotCarousel() {
   ];
 
   return (
-    <div className="w-full mx-auto flex flex-col max-w-md space-y-4">
+    <div className="w-full mx-auto flex flex-col max-w-[calc(100vw-2rem-3rem)] space-y-4">
       <h1 className="text-center text-2xl font-bold">How To Play</h1>
-      <Carousel
-        setApi={setApi}
-        opts={{ loop: true, align: "center" }}
-        className="relative w-full"
-      >
-        <CarouselContent>
-          {instructions.map((val, index) => (
-            <CarouselItem
-              key={index}
-              className="flex flex-col justify-center items-center space-y-2"
-            >
-              <Image
-                src={val["img"]}
-                alt={val["main"]}
-                width={100}
-                height={100}
-                className="w-48"
-              />
-              <div className="flex w-full text-xl font-semibold text-center mt-6 justify-center">
-                <p>{index + 1}.</p>
-                <p>{val["main"]}</p>
-              </div>
-              {/* <div className="flex flex-wrap gap-1 text-xl font-semibold text-center mt-6 w-full justify-center">
-                <p>{index + 1}.</p>
-                <p>{val["main"]}</p>
-              </div> */}
-              {/* <span className="text-center px-6">
-                {val["sub"]}
-              </span> */}
-            </CarouselItem>
-          ))}
-        </CarouselContent>
-      </Carousel>
+      <div className="w-full max-w-sm sm:max-w-md mx-auto">
+        <Carousel setApi={setApi} opts={{ loop: true, align: "center" }}>
+          <CarouselContent className="w-full m-0">
+            {instructions.map((val, index) => (
+              <CarouselItem
+                key={index}
+                className="flex flex-col justify-center items-center space-y-4 min-h-[300px] px-4 text-center w-full max-w-[calc(100vw-2rem)]"
+              >
+                <Image
+                  src={val.img}
+                  alt={val.main}
+                  width={100}
+                  height={100}
+                  className="w-32 sm:w-48"
+                />
+                <div className="text-sm sm:text-base text-white">
+                  <p className="text-xl font-semibold">
+                    {index + 1}. {val.main}
+                  </p>
+                  <p className="mt-1 text-gray-200 ">{val.sub}</p>
+                </div>
+              </CarouselItem>
+            ))}
+          </CarouselContent>
+        </Carousel>
+      </div>
 
       {/* Dot navigation with circular progress border */}
-      <div className="flex items-center justify-center gap-4">
+      <div className="flex items-center justify-center gap-4 w-full">
         {snapPoints.map((_, i) => {
           const radius = 12; // Slightly larger radius for outer border
           const circumference = 2 * Math.PI * radius;
