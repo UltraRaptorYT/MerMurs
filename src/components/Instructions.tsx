@@ -105,14 +105,14 @@ export default function ProgressDotCarousel() {
             {instructions.map((val, index) => (
               <CarouselItem
                 key={index}
-                className="flex flex-col justify-center items-center space-y-4 min-h-[300px] px-4 text-center w-full max-w-[calc(100vw-2rem)]"
+                className="flex flex-col justify-center items-center space-y-4 min-h-[300px] px-4 text-center w-full"
               >
                 <Image
                   src={val.img}
                   alt={val.main}
                   width={100}
                   height={100}
-                  className="w-32 sm:w-48"
+                  className="w-48"
                 />
                 <div className="text-sm sm:text-base text-white">
                   <p className="text-xl font-semibold">
