@@ -326,6 +326,7 @@ export default function GameLobbyPage() {
           {assignedPhrase && <CustomAudioPlayer url={assignedPhrase.audio} />}
           <Button> AUDIO PLAYER</Button>
           <Button> RECORDER</Button>
+          {isLastRound && "LAST ROUND!"}
         </>
       )}
     </div>
