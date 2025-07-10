@@ -281,7 +281,7 @@ export default function GameLobbyPage() {
   }
 
   return (
-    <div className="px-6 pt-1 pb-3 space-y-6 grow flex flex-col relative">
+    <div className="px-6 pt-1 pb-3 space-y-6 grow flex flex-col relative max-w-md mx-auto">
       {gameStatus === "start_game" && !countdownDone && (
         <Countdown onComplete={() => setCountdownDone(true)} />
       )}
