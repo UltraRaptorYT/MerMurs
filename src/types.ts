@@ -20,6 +20,7 @@ export interface Game {
   lobby_code: string;
   status: "waiting" | "start_game" | "in_progress" | "ended";
   created_at?: string;
+  is_last_round: boolean;
 }
 
 export interface Round {
@@ -38,3 +39,7 @@ export type SupabaseChangePayload<T> = {
   old: T | null;
   new: T | null;
 };
+
+export interface ExtendedReadableStream<R> extends ReadableStream {
+  [Symbol.asyncIterator](): AsyncIterableIterator<R>;
+}

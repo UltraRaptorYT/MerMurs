@@ -10,8 +10,8 @@ import { RealtimeChannel } from "@supabase/supabase-js";
 import ProtectedAdminRoute from "@/components/ProtectedAdminRoute";
 import { Game, Member, Round } from "@/types";
 import Countdown from "@/components/Countdown";
-// import CountdownTimer from "@/components/CountdownTimer";
-// import { ROUND_TIMER } from "@/contants";
+import CountdownTimer from "@/components/CountdownTimer";
+import { ROUND_TIMER, STARTING_PHRASE } from "@/contants";
 
 export default function AdminLobbyPage() {
   const supabase = createSupabaseClient();
@@ -23,6 +23,39 @@ export default function AdminLobbyPage() {
   const [rounds, setRounds] = useState<Round[]>([]);
   const [startCountdown, setStartCountdown] = useState(false);
   const channelRef = useRef<RealtimeChannel | null>(null);
+  const [timerRemaining, setTimerRemaining] = useState<number | null>(null);
+  const [startTimeFromSupabase, setStartTimeFromSupabase] = useState<
+    string | null
+  >(null);
+  const [hasCreatedRound, setHasCreatedRound] = useState(false);
+  const [manualMode, setManualMode] = useState(true); // default to manual
+
+  useEffect(() => {
+    if (!currentGame) return;
+
+    const roundCheck = async () => {
+      const { data: latestRound } = await supabase
+        .from("mermurs_rounds")
+        .select("*")
+        .eq("game_id", currentGame.id)
+        .order("round_number", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (latestRound?.start_time) {
+        const start = new Date(latestRound.start_time).getTime();
+        const now = Date.now();
+        const remaining = Math.max(ROUND_TIMER - (now - start) / 1000, 0);
+
+        setStartTimeFromSupabase(latestRound.start_time);
+        setTimerRemaining(remaining);
+      }
+    };
+
+    if (currentGame.status === "in_progress") {
+      roundCheck();
+    }
+  }, [currentGame, rounds]);
 
   const fetchCurrentGame = async () => {
     const { data, error } = await supabase
@@ -88,6 +121,44 @@ export default function AdminLobbyPage() {
       toast.success(`Round ${nextRoundNumber} created`);
       setRounds((prev) => [...prev, data]);
     }
+  };
+
+  const createLastRound = async () => {
+    if (!currentGame) return;
+
+    const nextRoundNumber = rounds.length + 1;
+    const now = new Date().toISOString();
+
+    const { data: newRound, error: roundError } = await supabase
+      .from("mermurs_rounds")
+      .insert([
+        {
+          game_id: currentGame.id,
+          round_number: nextRoundNumber,
+          start_time: now,
+        },
+      ])
+      .select()
+      .single();
+
+    if (roundError) {
+      toast.error("Failed to create last round.");
+      return;
+    }
+
+    const { error: gameUpdateError } = await supabase
+      .from("mermurs_games")
+      .update({ is_last_round: true })
+      .eq("id", currentGame.id);
+
+    if (gameUpdateError) {
+      toast.error("Round created, but failed to mark as last round.");
+      return;
+    }
+
+    toast.success(`Last Round (${nextRoundNumber}) created.`);
+    setRounds((prev) => [...prev, newRound]);
+    setCurrentGame((prev) => (prev ? { ...prev, is_last_round: true } : prev));
   };
 
   const updateGameStatus = async (status: string) => {
@@ -182,11 +253,10 @@ export default function AdminLobbyPage() {
   }, [lobbyId]);
 
   const countdownComplete = async () => {
-    if (!currentGame) return;
+    if (!currentGame || members.length === 0) return;
 
     const now = new Date().toISOString();
-
-    const { data: newRound, error } = await supabase
+    const { data: newRound, error: roundError } = await supabase
       .from("mermurs_rounds")
       .insert([
         {
@@ -198,11 +268,37 @@ export default function AdminLobbyPage() {
       .select()
       .single();
 
-    if (error) {
+    if (roundError || !newRound) {
       toast.error("Failed to create Round 1.");
       return;
     }
 
+    const shuffledMembers = [...members].sort(() => Math.random() - 0.5);
+
+    const phrasesToInsert = shuffledMembers.map((member, index) => {
+      const phrase = STARTING_PHRASE[index % STARTING_PHRASE.length];
+      return {
+        game_id: currentGame.id,
+        round_number: 1,
+        round_id: newRound.id,
+        player_id: member.uuid,
+        text: phrase.text,
+        audio: phrase.audio,
+      };
+    });
+
+    console.log(phrasesToInsert);
+
+    const { error: phraseError } = await supabase
+      .from("mermurs_phrases")
+      .insert(phrasesToInsert);
+
+    if (phraseError) {
+      toast.error("Failed to assign phrases.");
+      return;
+    }
+
+    toast.success("Round 1 created and phrases assigned.");
     setRounds([newRound]);
     await updateGameStatus("in_progress");
     setStartCountdown(false);
@@ -213,6 +309,10 @@ export default function AdminLobbyPage() {
     await updateGameStatus("waiting");
   };
 
+  useEffect(() => {
+    setHasCreatedRound(false);
+  }, [startTimeFromSupabase]);
+
   return (
     <ProtectedAdminRoute>
       <div className="p-6 space-y-6">
@@ -220,15 +320,24 @@ export default function AdminLobbyPage() {
 
         <h1 className="text-2xl font-bold">Admin Lobby: {lobbyId}</h1>
         <div className="w-10 h-10 rounded-full border-2 border-white flex justify-center items-center fixed top-2.5 right-2.5">
-          {/* {!startCountdown && roundStartTime && timerRemaining !== null && (
+          {startTimeFromSupabase && timerRemaining !== null && (
             <CountdownTimer
-              key={roundStartTime}
-              duration={timerRemaining}
-              startTime={Date.parse(roundStartTime)}
+              key={startTimeFromSupabase}
+              duration={ROUND_TIMER}
+              startTime={Date.parse(startTimeFromSupabase)}
               size={24}
-              onComplete={() => console.log("Done!")}
+              onComplete={async () => {
+                if (!hasCreatedRound) {
+                  setHasCreatedRound(true);
+                  if (!manualMode) {
+                    await createRound();
+                  } else {
+                    toast.success("ROUND COMPLETE!", { duration: 2000 });
+                  }
+                }
+              }}
             />
-          )} */}
+          )}
         </div>
         {!currentGame ? (
           <Button onClick={createGame}>Create New Game</Button>
@@ -262,9 +371,31 @@ export default function AdminLobbyPage() {
               >
                 Next Round
               </Button>
+              <Button
+                onClick={createLastRound}
+                disabled={
+                  currentGame.status !== "in_progress" ||
+                  currentGame.is_last_round ||
+                  !manualMode
+                }
+                variant="secondary"
+              >
+                Create Last Round
+              </Button>
+
               <Button onClick={endGame} variant="destructive">
                 End Game
               </Button>
+
+              <div className="flex items-center space-x-2">
+                <label className="text-sm font-medium">Manual Mode</label>
+                <input
+                  type="checkbox"
+                  checked={manualMode}
+                  onChange={() => setManualMode(!manualMode)}
+                  className="toggle"
+                />
+              </div>
             </div>
 
             <div className="mt-6">

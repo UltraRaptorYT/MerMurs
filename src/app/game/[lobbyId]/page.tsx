@@ -14,6 +14,7 @@ import Countdown from "@/components/Countdown";
 import Image from "next/image";
 import CountdownTimer from "@/components/CountdownTimer";
 import { ROUND_TIMER } from "@/contants";
+import CustomAudioPlayer from "@/components/AudioPlayer";
 
 export default function GameLobbyPage() {
   const supabase = createSupabaseClient();
@@ -36,6 +37,11 @@ export default function GameLobbyPage() {
   const [startTimeFromSupabase, setStartTimeFromSupabase] = useState<
     string | null
   >(null);
+  const [isLastRound, setIsLastRound] = useState(false);
+  const [assignedPhrase, setAssignedPhrase] = useState<{
+    text: string;
+    audio: string;
+  } | null>(null);
 
   useEffect(() => {
     const storedName = sessionStorage.getItem("playerName");
@@ -59,7 +65,7 @@ export default function GameLobbyPage() {
 
       const { data: game, error: gameError } = await supabase
         .from("mermurs_games")
-        .select("status")
+        .select("status, is_last_round")
         .eq("id", gameId)
         .single();
 
@@ -70,6 +76,7 @@ export default function GameLobbyPage() {
       }
 
       setGameStatus(game.status);
+      setIsLastRound(game.is_last_round ?? false);
       setGameInProgress(
         game.status === "start_game" || game.status === "in_progress"
       );
@@ -151,6 +158,22 @@ export default function GameLobbyPage() {
               case "UPDATE":
                 if (payload.new?.round_number !== undefined) {
                   setRound(payload.new.round_number);
+
+                  const { data: phraseRow, error: phraseError } = await supabase
+                    .from("mermurs_phrases")
+                    .select("text,audio")
+                    .eq("player_id", playerUUID)
+                    .eq("round_id", payload.new.id)
+                    .maybeSingle();
+
+                  if (!phraseError && phraseRow) {
+                    setAssignedPhrase({
+                      text: phraseRow.text,
+                      audio: phraseRow.audio,
+                    });
+                  } else {
+                    setAssignedPhrase(null);
+                  }
                 }
                 if (payload.new?.start_time) {
                   const startTime = new Date(payload.new.start_time).getTime();
@@ -256,7 +279,7 @@ export default function GameLobbyPage() {
       (gameStatus === "start_game" && !countdownDone) ? (
         <>
           {/* Always show these during waiting AND countdown */}
-          <PlayerScrollBar members={members} />
+          <PlayerScrollBar members={members} uuid={playerUUID} />
           <Instructions />
           <div className="flex items-center space-x-4 opacity-75">
             <Loader2 className="w-8 h-8 text-white animate-spin" />
@@ -299,7 +322,8 @@ export default function GameLobbyPage() {
               className="mx-auto m-5"
             />
           </div>
-          <p>TEXT HERE</p>
+          <p>{assignedPhrase && assignedPhrase.text}</p>
+          {assignedPhrase && <CustomAudioPlayer url={assignedPhrase.audio} />}
           <Button> AUDIO PLAYER</Button>
           <Button> RECORDER</Button>
         </>
