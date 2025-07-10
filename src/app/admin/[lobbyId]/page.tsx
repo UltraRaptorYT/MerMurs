@@ -86,6 +86,7 @@ export default function AdminLobbyPage() {
   };
 
   const createGame = async () => {
+    if (!channelRef.current) return;
     const { data, error } = await supabase
       .from("mermurs_games")
       .insert([{ lobby_code: lobbyId, status: "waiting" }])
@@ -96,6 +97,11 @@ export default function AdminLobbyPage() {
       toast.success("New game created");
       setCurrentGame(data);
       setRounds([]);
+      await channelRef.current.send({
+        type: "broadcast",
+        event: "newGame",
+        payload: { game_data: data },
+      });
     }
   };
 
@@ -352,7 +358,8 @@ export default function AdminLobbyPage() {
                   <strong>Status:</strong> {currentGame.status}
                 </div>
                 <div>
-                  <strong>Rounds:</strong> {rounds.length}
+                  <strong>Rounds:</strong> {rounds.length}{" "}
+                  {currentGame.is_last_round && "(LAST)"}
                 </div>
                 <div>
                   <strong>Number of Players:</strong> {members.length}
@@ -367,7 +374,10 @@ export default function AdminLobbyPage() {
               </Button>
               <Button
                 onClick={createRound}
-                disabled={currentGame.status !== "in_progress"}
+                disabled={
+                  currentGame.status !== "in_progress" ||
+                  currentGame.is_last_round
+                }
               >
                 Next Round
               </Button>

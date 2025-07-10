@@ -3,6 +3,7 @@
 import { useRef } from "react";
 import ReactAudioPlayer from "react-audio-player";
 import { Button } from "@/components/ui/button";
+import { Pause, PauseCircle, PlayCircle, StopCircle } from "lucide-react";
 
 type CustomAudioPlayerProps = {
   url: string;
@@ -43,9 +44,15 @@ export default function CustomAudioPlayer({ url }: CustomAudioPlayerProps) {
         }}
       />
       <div className="flex justify-center gap-4">
-        <Button onClick={handlePlay}>▶️ Play</Button>
-        <Button onClick={handlePause}>⏸️ Pause</Button>
-        <Button onClick={handleStop}>⏹️ Stop</Button>
+        <Button onClick={handlePlay}>
+          <PlayCircle /> Play
+        </Button>
+        <Button onClick={handlePause}>
+          <PauseCircle /> Pause
+        </Button>
+        <Button onClick={handleStop}>
+          <StopCircle /> Stop
+        </Button>
       </div>
     </div>
   );

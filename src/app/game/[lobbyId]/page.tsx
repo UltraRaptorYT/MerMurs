@@ -100,6 +100,12 @@ export default function GameLobbyPage() {
   }, [playerName, gameId, supabase, router]);
 
   useEffect(() => {
+    setCountdownDone(false);
+    setAssignedPhrase(null);
+    setRound(0);
+  }, [gameId]);
+
+  useEffect(() => {
     if (!playerName || !lobbyValid) return;
 
     const channel = supabase
@@ -125,6 +131,11 @@ export default function GameLobbyPage() {
         if (kickedMember === playerName) {
           handleLeaveGame("You have been kicked from the lobby.", "error");
         }
+      })
+      .on("broadcast", { event: "newGame" }, (payload) => {
+        const { game_data } = payload.payload;
+        sessionStorage.setItem("gameId", game_data.id);
+        setGameId(game_data.id);
       })
       .on(
         "postgres_changes",
@@ -236,7 +247,7 @@ export default function GameLobbyPage() {
         supabase.removeChannel(chan);
       }
     };
-  }, [playerName, lobbyId, lobbyValid]);
+  }, [playerName, lobbyId, lobbyValid, gameId]);
 
   const handleLeaveGame = async (
     message: string = "You have left the game.",
@@ -324,7 +335,6 @@ export default function GameLobbyPage() {
           </div>
           <p>{assignedPhrase && assignedPhrase.text}</p>
           {assignedPhrase && <CustomAudioPlayer url={assignedPhrase.audio} />}
-          <Button> AUDIO PLAYER</Button>
           <Button> RECORDER</Button>
           {isLastRound && "LAST ROUND!"}
         </>
