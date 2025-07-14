@@ -34,6 +34,7 @@ async function streamToBuffer(
 }
 
 export async function POST(req: Request) {
+  
   const { text, lang } = await req.json();
 
   if (!text || typeof text !== "string") {
@@ -53,7 +54,7 @@ export async function POST(req: Request) {
         stability: 0.75,
         similarityBoost: 0.75,
         useSpeakerBoost: true,
-        speed: lang == "tamil" ? 0.85 : 1.15,
+        speed: lang == "tamil" ? 0.85 : 1.05,
         style: 1,
       },
     }

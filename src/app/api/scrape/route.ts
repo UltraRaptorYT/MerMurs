@@ -237,7 +237,7 @@ export async function POST(req: Request) {
           { timeout: 0 }
         )
         .then(() => true),
-      new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 1000)),
+      new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 5000)),
     ]);
 
     if (thinkingDetected) {

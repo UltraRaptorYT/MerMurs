@@ -15,6 +15,7 @@ import Image from "next/image";
 import CountdownTimer from "@/components/CountdownTimer";
 import { ROUND_TIMER } from "@/contants";
 import CustomAudioPlayer from "@/components/AudioPlayer";
+import Recorder from "@/components/Recorder";
 
 export default function GameLobbyPage() {
   const supabase = createSupabaseClient();
@@ -39,8 +40,11 @@ export default function GameLobbyPage() {
   >(null);
   const [isLastRound, setIsLastRound] = useState(false);
   const [assignedPhrase, setAssignedPhrase] = useState<{
+    id: string;
     text: string;
     audio: string;
+    assist_text: string;
+    round_id: string;
   } | null>(null);
 
   useEffect(() => {
@@ -172,15 +176,18 @@ export default function GameLobbyPage() {
 
                   const { data: phraseRow, error: phraseError } = await supabase
                     .from("mermurs_phrases")
-                    .select("text,audio")
+                    .select("id,text,audio,assist_text")
                     .eq("player_id", playerUUID)
                     .eq("round_id", payload.new.id)
                     .maybeSingle();
 
                   if (!phraseError && phraseRow) {
                     setAssignedPhrase({
+                      id: phraseRow.id,
                       text: phraseRow.text,
                       audio: phraseRow.audio,
+                      assist_text: phraseRow.assist_text,
+                      round_id: payload.new.id,
                     });
                   } else {
                     setAssignedPhrase(null);
@@ -334,8 +341,18 @@ export default function GameLobbyPage() {
             />
           </div>
           <p>{assignedPhrase && assignedPhrase.text}</p>
+          <p>{assignedPhrase && assignedPhrase.assist_text}</p>
           {assignedPhrase && <CustomAudioPlayer url={assignedPhrase.audio} />}
-          <Button> RECORDER</Button>
+          {assignedPhrase && (
+            <Recorder
+              key={assignedPhrase.audio}
+              playerId={playerUUID}
+              phraseId={assignedPhrase.id}
+              roundId={assignedPhrase.round_id}
+              channel={channelRef.current}
+              gameId={gameId || ""}
+            />
+          )}
           {isLastRound && "LAST ROUND!"}
         </>
       )}

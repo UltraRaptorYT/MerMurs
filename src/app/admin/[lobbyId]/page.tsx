@@ -18,6 +18,9 @@ export default function AdminLobbyPage() {
   const params = useParams();
   const { lobbyId } = params as { lobbyId: string };
 
+  const [completedRecordings, setCompletedRecordings] = useState<Set<string>>(
+    new Set()
+  );
   const [members, setMembers] = useState<Member[]>([]);
   const [currentGame, setCurrentGame] = useState<Game | null>(null);
   const [rounds, setRounds] = useState<Round[]>([]);
@@ -29,6 +32,22 @@ export default function AdminLobbyPage() {
   >(null);
   const [hasCreatedRound, setHasCreatedRound] = useState(false);
   const [manualMode, setManualMode] = useState(true); // default to manual
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [lastUsedLanguage, setLastUsedLanguage] = useState<string | null>(null);
+
+  const LANGUAGES = ["chinese", "malay", "tamil"];
+
+  function getNextLanguage(
+    roundNumber: number,
+    isLastRound: boolean,
+    previousLang: string | null
+  ): string {
+    if (roundNumber === 1 || isLastRound) return "english";
+
+    const available = LANGUAGES.filter((lang) => lang !== previousLang);
+
+    return available[Math.floor(Math.random() * available.length)];
+  }
 
   useEffect(() => {
     if (!currentGame) return;
@@ -105,66 +124,141 @@ export default function AdminLobbyPage() {
     }
   };
 
-  const createRound = async () => {
-    if (!currentGame) return;
-    const nextRoundNumber = rounds.length + 1;
+  const handleCreateRound = async (isLast: boolean = false) => {
+    if (!currentGame || members.length === 0) return;
+    setIsProcessing(true);
 
+    const previousRoundNumber = rounds.length;
+    const nextRoundNumber = previousRoundNumber + 1;
     const now = new Date().toISOString();
+    const nextLanguage = getNextLanguage(
+      nextRoundNumber,
+      isLast,
+      lastUsedLanguage
+    );
+    setLastUsedLanguage(nextLanguage);
 
-    const { data, error } = await supabase
+    console.log(currentGame.id);
+    console.log(rounds.slice(-1)[0].id);
+
+    const { data: previousRecordings, error: recErr } = await supabase
+      .from("mermurs_recordings")
+      .select("*")
+      .eq("game_id", currentGame.id)
+      .eq("round_id", rounds.slice(-1)[0].id);
+
+    console.log(previousRecordings);
+
+    if (previousRoundNumber > 0 && (recErr || !previousRecordings)) {
+      toast.error("Couldn't fetch last round's recordings.");
+      setIsProcessing(false);
+      return;
+    }
+
+    console.log(nextLanguage);
+
+    console.log(previousRecordings);
+
+    const processed = await Promise.all(
+      (previousRecordings || []).map(async (rec) => {
+        console.log("PROMISE");
+        const res = await fetch("/api/processRecording", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            audio_url: rec.audio_path,
+            phrase_id: rec.id,
+            next_language: nextLanguage,
+          }),
+        });
+        if (!res.ok) {
+          console.error("⚠️ processing failed for", rec.id);
+          return null;
+        }
+        return (await res.json()) as {
+          phrase_id: string;
+          transcribed_text: string;
+          processed_audio_url: string;
+          assist_text: string;
+        };
+      })
+    );
+
+    console.log(nextLanguage);
+
+    const { data: newRound, error: roundErr } = await supabase
       .from("mermurs_rounds")
       .insert([
         {
           game_id: currentGame.id,
           round_number: nextRoundNumber,
           start_time: now,
+          language: nextLanguage,
         },
       ])
       .select()
       .single();
 
-    if (!error && data) {
-      toast.success(`Round ${nextRoundNumber} created`);
-      setRounds((prev) => [...prev, data]);
+    if (roundErr || !newRound || !processed) {
+      toast.error("Couldn't create new round.");
+      setIsProcessing(false);
+      return;
     }
-  };
 
-  const createLastRound = async () => {
-    if (!currentGame) return;
+    console.log(processed);
+    console.log(members);
 
-    const nextRoundNumber = rounds.length + 1;
-    const now = new Date().toISOString();
-
-    const { data: newRound, error: roundError } = await supabase
-      .from("mermurs_rounds")
-      .insert([
-        {
+    const rotatedPhrases = processed
+      .filter((r) => r) // drop any failed
+      .map((value) => {
+        if (!value) return;
+        const {
+          phrase_id,
+          transcribed_text,
+          processed_audio_url,
+          assist_text,
+        } = value;
+        // find who spoke it
+        const rec = previousRecordings!.find((x) => x.id === phrase_id)!;
+        const idx = members.findIndex((m) => m.uuid === rec.player_id);
+        const target = members[(idx + 1) % members.length];
+        return {
           game_id: currentGame.id,
           round_number: nextRoundNumber,
-          start_time: now,
-        },
-      ])
-      .select()
-      .single();
+          round_id: newRound.id,
+          player_id: target.uuid,
+          text: transcribed_text,
+          audio: processed_audio_url,
+          language: nextLanguage,
+          assist_text: assist_text,
+        };
+      });
 
-    if (roundError) {
-      toast.error("Failed to create last round.");
-      return;
+    const { error: insertErr } = await supabase
+      .from("mermurs_phrases")
+      .insert(rotatedPhrases);
+
+    if (insertErr) {
+      console.error("⚠️ couldn’t insert rotated phrases", insertErr);
+      toast.error("Failed to assign next-round phrases.");
     }
 
-    const { error: gameUpdateError } = await supabase
-      .from("mermurs_games")
-      .update({ is_last_round: true })
-      .eq("id", currentGame.id);
-
-    if (gameUpdateError) {
-      toast.error("Round created, but failed to mark as last round.");
-      return;
+    if (isLast) {
+      await supabase
+        .from("mermurs_games")
+        .update({ is_last_round: true })
+        .eq("id", currentGame.id);
+      setCurrentGame((g) => g && { ...g, is_last_round: true });
     }
 
-    toast.success(`Last Round (${nextRoundNumber}) created.`);
-    setRounds((prev) => [...prev, newRound]);
-    setCurrentGame((prev) => (prev ? { ...prev, is_last_round: true } : prev));
+    console.log(rotatedPhrases);
+
+    setRounds((rs) => [...rs, newRound]);
+    setCompletedRecordings(new Set());
+    setIsProcessing(false);
+    toast.success(
+      isLast ? "Last round created!" : `Round ${nextRoundNumber} created!`
+    );
   };
 
   const updateGameStatus = async (status: string) => {
@@ -246,6 +340,19 @@ export default function AdminLobbyPage() {
           })
         );
       })
+      .on("broadcast", { event: "recording_done" }, (payload) => {
+        const { player_id } = payload.payload;
+        setCompletedRecordings((prev) => new Set(prev).add(player_id));
+      })
+      .on("broadcast", { event: "recording_again" }, (payload) => {
+        const { player_id } = payload.payload;
+        setCompletedRecordings((prev) => {
+          const updated = new Set(prev);
+          updated.delete(player_id);
+          console.log([...updated]);
+          return updated;
+        });
+      })
       .subscribe();
 
     channelRef.current = presenceChannel;
@@ -306,6 +413,8 @@ export default function AdminLobbyPage() {
 
     toast.success("Round 1 created and phrases assigned.");
     setRounds([newRound]);
+    setIsProcessing(false);
+    setCompletedRecordings(new Set());
     await updateGameStatus("in_progress");
     setStartCountdown(false);
   };
@@ -336,7 +445,7 @@ export default function AdminLobbyPage() {
                 if (!hasCreatedRound) {
                   setHasCreatedRound(true);
                   if (!manualMode) {
-                    await createRound();
+                    await handleCreateRound(false);
                   } else {
                     toast.success("ROUND COMPLETE!", { duration: 2000 });
                   }
@@ -373,16 +482,17 @@ export default function AdminLobbyPage() {
                 Start Game
               </Button>
               <Button
-                onClick={createRound}
+                onClick={() => handleCreateRound(false)}
                 disabled={
                   currentGame.status !== "in_progress" ||
                   currentGame.is_last_round
+                  // isProcessing
                 }
               >
                 Next Round
               </Button>
               <Button
-                onClick={createLastRound}
+                onClick={() => handleCreateRound(true)}
                 disabled={
                   currentGame.status !== "in_progress" ||
                   currentGame.is_last_round ||
@@ -424,7 +534,14 @@ export default function AdminLobbyPage() {
           <ul className="list-disc list-inside space-y-2">
             {members.map((member) => (
               <li key={member.id} className="flex items-center justify-between">
-                {member.name}
+                <div>
+                  {member.name}
+                  {completedRecordings.has(member.uuid) && (
+                    <span className="ml-2 text-green-500 font-semibold">
+                      ✅ Done!
+                    </span>
+                  )}
+                </div>
                 <Button
                   variant="destructive"
                   size="sm"

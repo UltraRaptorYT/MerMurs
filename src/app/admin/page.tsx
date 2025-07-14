@@ -109,9 +109,6 @@ export default function AdminPage() {
                   <strong>Lobby Code:</strong> {lobby.lobby_code}
                 </div>
                 <div>
-                  <strong>Status:</strong> {lobby.status}
-                </div>
-                <div>
                   <strong>Created At:</strong>{" "}
                   {new Date(lobby.created_at).toLocaleString()}
                 </div>
