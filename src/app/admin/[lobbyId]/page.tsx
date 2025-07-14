@@ -485,8 +485,8 @@ export default function AdminLobbyPage() {
                 onClick={() => handleCreateRound(false)}
                 disabled={
                   currentGame.status !== "in_progress" ||
-                  currentGame.is_last_round
-                  // isProcessing
+                  currentGame.is_last_round ||
+                  isProcessing
                 }
               >
                 Next Round
