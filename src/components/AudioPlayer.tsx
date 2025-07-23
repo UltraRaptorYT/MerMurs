@@ -28,7 +28,7 @@ export default function CustomAudioPlayer({ url }: CustomAudioPlayerProps) {
   };
 
   let playerSrc = url;
-  if (!playerSrc.startsWith("https://")) {
+  if (playerSrc && !playerSrc.startsWith("https://")) {
     playerSrc = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/syai-mermurs/${playerSrc}`;
   }
   console.log(playerSrc);

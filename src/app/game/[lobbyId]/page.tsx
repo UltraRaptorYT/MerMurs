@@ -6,7 +6,7 @@ import { createSupabaseClient } from "@/lib/supabaseClient";
 import { Button } from "@/components/ui/button";
 import { RealtimeChannel } from "@supabase/supabase-js";
 import { toast } from "sonner";
-import { Member } from "@/types";
+import { Member, Phrase } from "@/types";
 import PlayerScrollBar from "@/components/PlayerScrollBar";
 import Instructions from "@/components/Instructions";
 import { Loader2 } from "lucide-react";
@@ -16,6 +16,7 @@ import CountdownTimer from "@/components/CountdownTimer";
 import { ROUND_TIMER } from "@/contants";
 import CustomAudioPlayer from "@/components/AudioPlayer";
 import Recorder from "@/components/Recorder";
+import ReviewAlbumPage from "@/components/Review/ReviewAlbumPage";
 
 export default function GameLobbyPage() {
   const supabase = createSupabaseClient();
@@ -38,7 +39,7 @@ export default function GameLobbyPage() {
   const [startTimeFromSupabase, setStartTimeFromSupabase] = useState<
     string | null
   >(null);
-  const [isLastRound, setIsLastRound] = useState(false);
+  const [isReview, setIsReview] = useState(false);
   const [assignedPhrase, setAssignedPhrase] = useState<{
     id: string;
     text: string;
@@ -46,6 +47,16 @@ export default function GameLobbyPage() {
     assist_text: string;
     round_id: string;
   } | null>(null);
+  const [reviewPhrases, setReviewPhrases] = useState<Phrase[][] | null>(null);
+  const [processingOverlay, setProcessingOverlay] = useState(false);
+
+  useEffect(() => {
+    console.log(isReview);
+  }, [isReview]);
+
+  useEffect(() => {
+    console.log(reviewPhrases);
+  }, [reviewPhrases]);
 
   useEffect(() => {
     const storedName = sessionStorage.getItem("playerName");
@@ -69,7 +80,7 @@ export default function GameLobbyPage() {
 
       const { data: game, error: gameError } = await supabase
         .from("mermurs_games")
-        .select("status, is_last_round")
+        .select("status, is_review")
         .eq("id", gameId)
         .single();
 
@@ -80,9 +91,11 @@ export default function GameLobbyPage() {
       }
 
       setGameStatus(game.status);
-      setIsLastRound(game.is_last_round ?? false);
+      setIsReview(game.is_review ?? false);
       setGameInProgress(
-        game.status === "start_game" || game.status === "in_progress"
+        game.status === "start_game" ||
+          game.status === "in_progress" ||
+          game.status === "review"
       );
       setLobbyValid(true);
 
@@ -141,6 +154,16 @@ export default function GameLobbyPage() {
         sessionStorage.setItem("gameId", game_data.id);
         setGameId(game_data.id);
       })
+      .on("broadcast", { event: "processing_started" }, () => {
+        setProcessingOverlay(true);
+      })
+      .on("broadcast", { event: "processing_done" }, () => {
+        setProcessingOverlay(false);
+      })
+      .on("broadcast", { event: "review_started" }, (payload) => {
+        const { chains } = payload.payload;
+        setReviewPhrases(chains);
+      })
       .on(
         "postgres_changes",
         {
@@ -153,6 +176,7 @@ export default function GameLobbyPage() {
           const updatedStatus = payload.new.status;
           setCountdownDone(false);
           setGameStatus(updatedStatus);
+          setProcessingOverlay(false);
           setGameInProgress(
             updatedStatus === "start_game" || updatedStatus === "in_progress"
           );
@@ -313,8 +337,20 @@ export default function GameLobbyPage() {
             Leave Game
           </Button>
         </>
+      ) : isReview && reviewPhrases ? (
+        <>
+          <ReviewAlbumPage lobbyId={lobbyId} chains={reviewPhrases} />
+        </>
       ) : (
         <>
+          {processingOverlay && (
+            <div className="fixed inset-0 z-50 bg-black bg-opacity-80 flex items-center justify-center m-0">
+              <div className="text-white text-xl font-semibold flex items-center gap-4">
+                <Loader2 className="animate-spin w-6 h-6" />
+                Preparing next round...
+              </div>
+            </div>
+          )}
           {/* Game has started & countdown is done */}
           <div className="flex items-center justify-between fixed top-2.5 px-2.5 left-0 right-0 w-full">
             <p className="bg-white text-black rounded-lg py-2 px-2.5 font-semibold">
@@ -353,7 +389,7 @@ export default function GameLobbyPage() {
               gameId={gameId || ""}
             />
           )}
-          {isLastRound && "LAST ROUND!"}
+          {isReview && "Review Mode"}
         </>
       )}
     </div>

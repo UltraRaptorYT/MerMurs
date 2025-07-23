@@ -95,7 +95,8 @@ export async function POST(req: Request) {
 
   const formData = await req.formData();
   const file = formData.get("file");
-  const lang = formData.get("lang")?.toString().trim() || "";
+  const old_lang = formData.get("old_lang")?.toString().trim() || "";
+  const new_lang = formData.get("new_lang")?.toString().trim() || "";
 
   const allowedTypes = ["audio/mpeg", "audio/wav", "audio/wave"];
   const allowedExtensions = [".mp3", ".wav"];
@@ -197,21 +198,21 @@ export async function POST(req: Request) {
         (el: Element) => (el as HTMLElement).textContent?.trim().toLowerCase(),
         button
       );
-      if (buttonText.includes(lang.trim().toLowerCase())) {
+      if (buttonText.includes(new_lang.trim().toLowerCase())) {
         matchedButton = button;
         break;
       }
     }
 
     if (matchedButton) {
-      console.log(`Found button for language: ${lang}`);
+      console.log(`Found button for language: ${new_lang}`);
       await matchedButton.click();
     } else {
-      console.log(`No button found for language: ${lang}, typing instead.`);
+      console.log(`No button found for language: ${new_lang}, typing instead.`);
       await page.waitForSelector('[aria-label="Instruction..."]');
       await page.type(
         '[aria-label="Instruction..."]',
-        `Please translate this speech to ${lang}`
+        `Please translate this speech from ${old_lang} to ${new_lang} as much as possible. Note if you dont understand what the person is saying, try your best to translate what you think they mean. DO NOT output the following or similar phrases like I am unable to translate to the language.`
       );
       await page.keyboard.press("Enter");
     }
@@ -237,7 +238,7 @@ export async function POST(req: Request) {
           { timeout: 0 }
         )
         .then(() => true),
-      new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 5000)),
+      new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 10000)),
     ]);
 
     if (thinkingDetected) {
@@ -249,7 +250,7 @@ export async function POST(req: Request) {
 
     if (
       matchedButton &&
-      !["transcribe", "summarise"].includes(lang.trim().toLowerCase())
+      !["transcribe", "summarise"].includes(new_lang.trim().toLowerCase())
     ) {
       console.log("WAITING FOR 2 AUDIO ELEMENTS...");
 

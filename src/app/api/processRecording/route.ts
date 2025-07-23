@@ -3,9 +3,17 @@ import { createSupabaseClient } from "@/lib/supabaseClient";
 
 export async function POST(req: NextRequest) {
   const supabase = createSupabaseClient();
-  const { audio_url, phrase_id, next_language } = await req.json();
+  const { audio_url, check_id, phrase_id, next_language, old_language } =
+    await req.json();
 
-  if (!audio_url || !next_language || !phrase_id) {
+  if (
+    !audio_url ||
+    !next_language ||
+    !old_language ||
+    !phrase_id ||
+    !check_id
+  ) {
+    console.log(audio_url, next_language, old_language, phrase_id, check_id);
     return NextResponse.json({ error: "Missing parameters" }, { status: 400 });
   }
 
@@ -30,7 +38,8 @@ export async function POST(req: NextRequest) {
       "file",
       new File([audioBlob], "audio.wav", { type: "audio/wav" })
     );
-    formData.append("lang", next_language);
+    formData.append("old_lang", old_language);
+    formData.append("new_lang", next_language);
 
     const scrapeRes = await fetch(
       `${process.env.NEXT_PUBLIC_BASE_URL}/api/scrape`,
@@ -40,6 +49,10 @@ export async function POST(req: NextRequest) {
       }
     );
 
+    if (!scrapeRes.ok) {
+      const err = await scrapeRes.json(); // or .json() depending on your API
+      throw new Error(`Scrape failed: ${err}`);
+    }
     const { text: transcribed_text } = await scrapeRes.json();
 
     if (!transcribed_text) {
@@ -72,6 +85,7 @@ export async function POST(req: NextRequest) {
     // Step 4: Check for if need like pronounciation help
     let assist_text = "";
     if (next_language == "chinese" || next_language == "tamil") {
+      console.log("STEP 4");
       const geminiRes = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL}/api/gemini`,
         {
@@ -94,16 +108,40 @@ export async function POST(req: NextRequest) {
 
       assist_text = output;
     }
-    // Step 4: Update `mermurs_phrases` with both results
-    console.log("STEP 4");
+
+    console.log("STEP 4b");
+    let translated_text = "";
+    if (next_language != "english") {
+      const translateRes = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/translate`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            input: transcribed_text,
+          }),
+        }
+      );
+
+      const result = await translateRes.json();
+      translated_text = result.output;
+
+      if (!translated_text) {
+        return NextResponse.json(
+          { error: "Failed to get English translation" },
+          { status: 500 }
+        );
+      }
+    }
+
+    // Step 5 Update original phrase to have the recording audio_url
+    console.log("STEP 5");
     const { error: updateError } = await supabase
       .from("mermurs_phrases")
       .update({
-        transcribed_text,
-        processed_audio_url,
-        assist_text,
+        recorded_audio_url: audio_url,
       })
-      .eq("id", phrase_id);
+      .eq("id", check_id);
 
     if (updateError) {
       return NextResponse.json(
@@ -118,6 +156,7 @@ export async function POST(req: NextRequest) {
       transcribed_text,
       processed_audio_url,
       assist_text,
+      translated_text,
     });
   } catch (err) {
     console.error("❌ Error in /api/processRecording:", err);

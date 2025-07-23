@@ -34,7 +34,6 @@ async function streamToBuffer(
 }
 
 export async function POST(req: Request) {
-  
   const { text, lang } = await req.json();
 
   if (!text || typeof text !== "string") {

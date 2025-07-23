@@ -8,10 +8,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import { RealtimeChannel } from "@supabase/supabase-js";
 import ProtectedAdminRoute from "@/components/ProtectedAdminRoute";
-import { Game, Member, Round } from "@/types";
+import { Game, Member, Round, Phrase } from "@/types";
 import Countdown from "@/components/Countdown";
 import CountdownTimer from "@/components/CountdownTimer";
 import { ROUND_TIMER, STARTING_PHRASE } from "@/contants";
+import ReviewAlbumPage from "@/components/Review/ReviewAlbumPage";
 
 export default function AdminLobbyPage() {
   const supabase = createSupabaseClient();
@@ -34,15 +35,16 @@ export default function AdminLobbyPage() {
   const [manualMode, setManualMode] = useState(true); // default to manual
   const [isProcessing, setIsProcessing] = useState(false);
   const [lastUsedLanguage, setLastUsedLanguage] = useState<string | null>(null);
+  const [reviewPhrases, setReviewPhrases] = useState<Phrase[][] | null>(null);
 
   const LANGUAGES = ["chinese", "malay", "tamil"];
 
   function getNextLanguage(
     roundNumber: number,
-    isLastRound: boolean,
+    isReview: boolean,
     previousLang: string | null
   ): string {
-    if (roundNumber === 1 || isLastRound) return "english";
+    if (roundNumber === 1 || isReview) return "english";
 
     const available = LANGUAGES.filter((lang) => lang !== previousLang);
 
@@ -124,22 +126,27 @@ export default function AdminLobbyPage() {
     }
   };
 
-  const handleCreateRound = async (isLast: boolean = false) => {
+  const handleCreateRound = async (isReview: boolean = false) => {
     if (!currentGame || members.length === 0) return;
     setIsProcessing(true);
+
+    if (channelRef.current) {
+      await channelRef.current.send({
+        type: "broadcast",
+        event: "processing_started",
+      });
+    }
 
     const previousRoundNumber = rounds.length;
     const nextRoundNumber = previousRoundNumber + 1;
     const now = new Date().toISOString();
+    const oldLanguage = lastUsedLanguage;
     const nextLanguage = getNextLanguage(
       nextRoundNumber,
-      isLast,
+      isReview,
       lastUsedLanguage
     );
     setLastUsedLanguage(nextLanguage);
-
-    console.log(currentGame.id);
-    console.log(rounds.slice(-1)[0].id);
 
     const { data: previousRecordings, error: recErr } = await supabase
       .from("mermurs_recordings")
@@ -168,10 +175,13 @@ export default function AdminLobbyPage() {
           body: JSON.stringify({
             audio_url: rec.audio_path,
             phrase_id: rec.id,
+            check_id: rec.phrase_id,
+            old_language: oldLanguage,
             next_language: nextLanguage,
           }),
         });
         if (!res.ok) {
+          console.log(res);
           console.error("⚠️ processing failed for", rec.id);
           return null;
         }
@@ -180,6 +190,7 @@ export default function AdminLobbyPage() {
           transcribed_text: string;
           processed_audio_url: string;
           assist_text: string;
+          translated_text: string;
         };
       })
     );
@@ -217,9 +228,12 @@ export default function AdminLobbyPage() {
           transcribed_text,
           processed_audio_url,
           assist_text,
+          translated_text,
         } = value;
+        console.log(phrase_id);
         // find who spoke it
         const rec = previousRecordings!.find((x) => x.id === phrase_id)!;
+        console.log(rec);
         const idx = members.findIndex((m) => m.uuid === rec.player_id);
         const target = members[(idx + 1) % members.length];
         return {
@@ -231,6 +245,8 @@ export default function AdminLobbyPage() {
           audio: processed_audio_url,
           language: nextLanguage,
           assist_text: assist_text,
+          translated_text: translated_text,
+          original_phrase_id: rec.phrase_id,
         };
       });
 
@@ -243,12 +259,12 @@ export default function AdminLobbyPage() {
       toast.error("Failed to assign next-round phrases.");
     }
 
-    if (isLast) {
+    if (isReview) {
       await supabase
         .from("mermurs_games")
-        .update({ is_last_round: true })
+        .update({ is_review: true, status: "review" })
         .eq("id", currentGame.id);
-      setCurrentGame((g) => g && { ...g, is_last_round: true });
+      setCurrentGame((g) => g && { ...g, is_review: true, status: "review" });
     }
 
     console.log(rotatedPhrases);
@@ -257,8 +273,14 @@ export default function AdminLobbyPage() {
     setCompletedRecordings(new Set());
     setIsProcessing(false);
     toast.success(
-      isLast ? "Last round created!" : `Round ${nextRoundNumber} created!`
+      isReview ? "Last round created!" : `Round ${nextRoundNumber} created!`
     );
+    if (channelRef.current) {
+      await channelRef.current.send({
+        type: "broadcast",
+        event: "processing_done",
+      });
+    }
   };
 
   const updateGameStatus = async (status: string) => {
@@ -365,6 +387,70 @@ export default function AdminLobbyPage() {
     };
   }, [lobbyId]);
 
+  const getReview = async () => {
+    if (!currentGame) {
+      toast.error("No Game Found");
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("mermurs_phrases")
+      .select("*,mermurs_players(*)")
+      .eq("game_id", currentGame.id);
+
+    if (error || !data) {
+      toast.error("Review Phrases Not Found");
+      return;
+    }
+
+    // Step 1: Build child lookup map
+    const childMap = new Map<string, Phrase>();
+    for (const phrase of data) {
+      if (phrase.original_phrase_id) {
+        childMap.set(phrase.original_phrase_id, phrase);
+      }
+    }
+
+    // Step 2: Build forward chain from rootId
+    function buildForwardChain(rootId: string): Phrase[] {
+      const chain: Phrase[] = [];
+      let current = data?.find((p) => p.id === rootId);
+      while (current) {
+        chain.push(current);
+        current = childMap.get(current.id);
+      }
+      return chain;
+    }
+
+    // Step 3: Find all roots (phrases without original_phrase_id)
+    const rootPhrases = data.filter((p) => !p.original_phrase_id);
+
+    // Step 4: Build all chains
+    const chains: Phrase[][] = rootPhrases.map((root) =>
+      buildForwardChain(root.id)
+    );
+
+    // ✅ Now you have `chains`, an array of phrase chains
+    console.log("Chains for review:", chains);
+    setReviewPhrases(chains);
+    console.log(channelRef.current);
+    if (channelRef.current) {
+      await channelRef.current.send({
+        type: "broadcast",
+        event: "review_started",
+        payload: {
+          chains,
+        },
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (currentGame && currentGame.is_review) {
+      getReview();
+    }
+  }, [currentGame]);
+
   const countdownComplete = async () => {
     if (!currentGame || members.length === 0) return;
 
@@ -388,8 +474,12 @@ export default function AdminLobbyPage() {
 
     const shuffledMembers = [...members].sort(() => Math.random() - 0.5);
 
+    const shuffledPhrases = [...STARTING_PHRASE].sort(
+      () => Math.random() - 0.5
+    );
+
     const phrasesToInsert = shuffledMembers.map((member, index) => {
-      const phrase = STARTING_PHRASE[index % STARTING_PHRASE.length];
+      const phrase = shuffledPhrases[index % STARTING_PHRASE.length];
       return {
         game_id: currentGame.id,
         round_number: 1,
@@ -414,6 +504,7 @@ export default function AdminLobbyPage() {
     toast.success("Round 1 created and phrases assigned.");
     setRounds([newRound]);
     setIsProcessing(false);
+    setLastUsedLanguage("english");
     setCompletedRecordings(new Set());
     await updateGameStatus("in_progress");
     setStartCountdown(false);
@@ -468,7 +559,7 @@ export default function AdminLobbyPage() {
                 </div>
                 <div>
                   <strong>Rounds:</strong> {rounds.length}{" "}
-                  {currentGame.is_last_round && "(LAST)"}
+                  {currentGame.is_review && "(LAST)"}
                 </div>
                 <div>
                   <strong>Number of Players:</strong> {members.length}
@@ -478,14 +569,14 @@ export default function AdminLobbyPage() {
 
             <div className="space-x-4">
               <Button onClick={updateWaiting}>Set Waiting</Button>
-              <Button onClick={startGame} disabled={members.length < 4}>
+              <Button onClick={startGame} disabled={members.length < 2}>
                 Start Game
               </Button>
               <Button
                 onClick={() => handleCreateRound(false)}
                 disabled={
                   currentGame.status !== "in_progress" ||
-                  currentGame.is_last_round ||
+                  currentGame.is_review ||
                   isProcessing
                 }
               >
@@ -495,16 +586,16 @@ export default function AdminLobbyPage() {
                 onClick={() => handleCreateRound(true)}
                 disabled={
                   currentGame.status !== "in_progress" ||
-                  currentGame.is_last_round ||
+                  currentGame.is_review ||
                   !manualMode
                 }
                 variant="secondary"
               >
-                Create Last Round
+                Review Game
               </Button>
 
               <Button onClick={endGame} variant="destructive">
-                End Game
+                Kill Game
               </Button>
 
               <div className="flex items-center space-x-2">
@@ -527,6 +618,14 @@ export default function AdminLobbyPage() {
               </ul>
             </div>
           </>
+        )}
+
+        {reviewPhrases && reviewPhrases?.length > 0 && (
+          <ReviewAlbumPage
+            chains={reviewPhrases}
+            lobbyId={lobbyId}
+            isAdmin={true}
+          />
         )}
 
         <div className="mt-6">

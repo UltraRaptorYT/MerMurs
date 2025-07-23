@@ -174,6 +174,8 @@ export default function Recorder({
       else setExistingRowId(insertData.id);
     }
 
+    setUploading(false);
+    toast.success("✅ Recording uploaded and marked as done!");
     if (channel) {
       await channel.send({
         type: "broadcast",
@@ -181,9 +183,6 @@ export default function Recorder({
         payload: { player_id: playerId, round_id: roundId },
       });
     }
-
-    toast.success("✅ Recording uploaded and marked as done!");
-    setUploading(false);
   }
 
   return (

@@ -18,9 +18,9 @@ export interface Lobby {
 export interface Game {
   id: string;
   lobby_code: string;
-  status: "waiting" | "start_game" | "in_progress" | "ended";
+  status: "waiting" | "start_game" | "in_progress" | "review" | "ended";
   created_at?: string;
-  is_last_round: boolean;
+  is_review: boolean;
 }
 
 export interface Round {
@@ -28,6 +28,22 @@ export interface Round {
   game_id: string;
   round_number: number;
   created_at?: string;
+}
+
+export interface Phrase {
+  id: string;
+  text: string;
+  audio: string;
+  created_at: string;
+  game_id: string;
+  player_id: string;
+  round_id: string;
+  round_number: number;
+  language: string;
+  assist_text: string;
+  translated_text: string;
+  original_phrase_id: string;
+  recorded_audio_url: string;
 }
 
 export type SupabaseChangePayload<T> = {

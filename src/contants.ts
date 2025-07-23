@@ -1,4 +1,4 @@
-export const ROUND_TIMER = 10;
+export const ROUND_TIMER = 90;
 
 export const STARTING_PHRASE = [
   {
