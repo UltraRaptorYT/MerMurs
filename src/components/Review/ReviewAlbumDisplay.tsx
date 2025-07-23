@@ -5,7 +5,7 @@ export default function ReviewAlbumDisplay({ chain }: { chain: Phrase[] }) {
   console.log(chain);
   return (
     <div className="space-y-4">
-      {chain.map((p, i) => (
+      {chain.map((p) => (
         <div
           key={p.id}
           className="bg-white text-black rounded-xl p-4 shadow-md space-y-2"

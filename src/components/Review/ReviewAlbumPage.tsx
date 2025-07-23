@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
 import { createSupabaseClient } from "@/lib/supabaseClient";
+import { RealtimeChannel } from "@supabase/supabase-js";
 import ReviewAlbumDisplay from "./ReviewAlbumDisplay";
 import ReviewControls from "./ReviewControls";
 import { Phrase } from "@/types";
@@ -16,7 +17,7 @@ export default function ReviewAlbumPage({
 }) {
   const [currentStep, setCurrentStep] = useState(0);
   const supabase = createSupabaseClient();
-  const channelRef = useRef<any>(null);
+  const channelRef = useRef<RealtimeChannel | null>(null);
 
   useEffect(() => {
     const channel = supabase.channel(`review-lobby:${lobbyId}`);
