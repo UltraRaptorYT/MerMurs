@@ -124,7 +124,7 @@ export default function ReviewAlbumDisplay({ chain }: { chain: Phrase[] }) {
                       <ProfilePictureDisplay
                         imageSrc={p.mermurs_players.image}
                         width={50}
-                        alt={`${p.mermurs_players.player_name}'s PFP`}
+                        alt={`${p.mermurs_players.player_name} PFP`}
                         className="w-full"
                       />
                       <span className="text-white text-xs font-bold text-ellipsis text-center overflow-hidden w-12">

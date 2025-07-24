@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import ReactAudioPlayer from "react-audio-player";
 import { Button } from "@/components/ui/button";
-import { PauseCircle, PlayCircle, StopCircle } from "lucide-react";
+import { PlayCircle, StopCircle } from "lucide-react";
 
 type CustomAudioPlayerProps = {
   url: string;
