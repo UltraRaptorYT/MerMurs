@@ -17,7 +17,7 @@ export default function ReviewControls({
         Back
       </Button>
       <p className="text-white font-bold">
-        Album {currentStep + 1} / {maxSteps}
+        Review {currentStep + 1} / {maxSteps}
       </p>
       <Button onClick={onNext} disabled={currentStep + 1 >= maxSteps}>
         Next

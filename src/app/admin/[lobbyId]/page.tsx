@@ -608,15 +608,6 @@ export default function AdminLobbyPage() {
                 />
               </div>
             </div>
-
-            <div className="mt-6">
-              <h2 className="text-xl font-semibold">Rounds:</h2>
-              <ul className="list-disc list-inside space-y-1">
-                {rounds.map((round) => (
-                  <li key={round.id}>Round {round.round_number}</li>
-                ))}
-              </ul>
-            </div>
           </>
         )}
 

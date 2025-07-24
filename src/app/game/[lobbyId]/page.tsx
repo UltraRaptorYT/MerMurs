@@ -51,14 +51,6 @@ export default function GameLobbyPage() {
   const [processingOverlay, setProcessingOverlay] = useState(false);
 
   useEffect(() => {
-    console.log(isReview);
-  }, [isReview]);
-
-  useEffect(() => {
-    console.log(reviewPhrases);
-  }, [reviewPhrases]);
-
-  useEffect(() => {
     const storedName = sessionStorage.getItem("playerName");
     const storedUUID = sessionStorage.getItem("playerUUID");
     const profilePicture = sessionStorage.getItem("profilePicture");
@@ -312,7 +304,7 @@ export default function GameLobbyPage() {
   }
 
   return (
-    <div className="px-6 pt-1 pb-3 space-y-6 grow flex flex-col relative max-w-md mx-auto">
+    <div className="px-6 pt-1 pb-3 space-y-6 grow flex flex-col relative max-w-md mx-auto w-full">
       {gameStatus === "start_game" && !countdownDone && (
         <Countdown onComplete={() => setCountdownDone(true)} />
       )}
@@ -337,9 +329,12 @@ export default function GameLobbyPage() {
             Leave Game
           </Button>
         </>
-      ) : isReview && reviewPhrases ? (
+      ) : isReview ? (
         <>
-          <ReviewAlbumPage lobbyId={lobbyId} chains={reviewPhrases} />
+          <PlayerScrollBar members={members} uuid={playerUUID} />
+          {reviewPhrases && (
+            <ReviewAlbumPage lobbyId={lobbyId} chains={reviewPhrases} />
+          )}
         </>
       ) : (
         <>

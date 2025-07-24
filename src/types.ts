@@ -30,6 +30,14 @@ export interface Round {
   created_at?: string;
 }
 
+export interface MemberTable {
+  id: string;
+  image: string;
+  joined_at: string;
+  lobby_code: string;
+  player_name: string;
+}
+
 export interface Phrase {
   id: string;
   text: string;
@@ -44,6 +52,7 @@ export interface Phrase {
   translated_text: string;
   original_phrase_id: string;
   recorded_audio_url: string;
+  mermurs_players: MemberTable;
 }
 
 export type SupabaseChangePayload<T> = {

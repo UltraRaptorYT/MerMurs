@@ -78,7 +78,6 @@ export default function ProfilePictureSelector() {
   }, [selectedPicture]);
 
   const handleRandomise = () => {
-    console.log("h");
     const availablePictures = profilePictures.filter(
       (picture) => picture !== selectedPicture
     );
