@@ -13,6 +13,7 @@ import Countdown from "@/components/Countdown";
 import CountdownTimer from "@/components/CountdownTimer";
 import { ROUND_TIMER, STARTING_PHRASE } from "@/contants";
 import ReviewAlbumPage from "@/components/Review/ReviewAlbumPage";
+import Image from "next/image";
 
 export default function AdminLobbyPage() {
   const supabase = createSupabaseClient();
@@ -136,6 +137,14 @@ export default function AdminLobbyPage() {
         event: "processing_started",
       });
     }
+    await supabase
+      .from("mermurs_games")
+      .update({ processing: true })
+      .eq("id", currentGame.id);
+    await supabase
+      .from("mermurs_games")
+      .update({ is_processing: true })
+      .eq("id", currentGame.id);
 
     const previousRoundNumber = rounds.length;
     const nextRoundNumber = previousRoundNumber + 1;
@@ -281,6 +290,17 @@ export default function AdminLobbyPage() {
         event: "processing_done",
       });
     }
+    await supabase
+      .from("mermurs_games")
+      .update({ processing: false })
+      .eq("id", currentGame.id);
+
+    await supabase
+      .from("mermurs_games")
+      .update({ is_processing: false })
+      .eq("id", currentGame.id);
+
+    setIsProcessing(false);
   };
 
   const updateGameStatus = async (status: string) => {
@@ -549,23 +569,32 @@ export default function AdminLobbyPage() {
           <Button onClick={createGame}>Create New Game</Button>
         ) : (
           <>
-            <Card>
-              <CardContent className="p-4 space-y-2">
-                <div>
-                  <strong>Game ID:</strong> {currentGame.id}
-                </div>
-                <div>
-                  <strong>Status:</strong> {currentGame.status}
-                </div>
-                <div>
-                  <strong>Rounds:</strong> {rounds.length}{" "}
-                  {currentGame.is_review && "(LAST)"}
-                </div>
-                <div>
-                  <strong>Number of Players:</strong> {members.length}
-                </div>
-              </CardContent>
-            </Card>
+            <div className="flex w-full items-center gap-5">
+              <Card className="w-full">
+                <CardContent className="p-4 space-y-2">
+                  <div>
+                    <strong>Game ID:</strong> {currentGame.id}
+                  </div>
+                  <div>
+                    <strong>Status:</strong> {currentGame.status}
+                  </div>
+                  <div>
+                    <strong>Rounds:</strong> {rounds.length}{" "}
+                    {currentGame.is_review && "(LAST)"}
+                  </div>
+                  <div>
+                    <strong>Number of Players:</strong> {members.length}
+                  </div>
+                </CardContent>
+              </Card>
+              <Image
+                src={`http://api.qrserver.com/v1/create-qr-code/?data=${process.env.NEXT_PUBLIC_BASE_URL}/game/${lobbyId}&size=300x300&margin=25&color=#000000`}
+                width={200}
+                height={200}
+                  alt={"MerMurs Logo"}
+                  className="rounded-lg"
+              />
+            </div>
 
             <div className="space-x-4">
               <Button onClick={updateWaiting}>Set Waiting</Button>

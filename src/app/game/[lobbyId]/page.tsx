@@ -50,6 +50,178 @@ export default function GameLobbyPage() {
   const [reviewPhrases, setReviewPhrases] = useState<Phrase[][] | null>(null);
   const [processingOverlay, setProcessingOverlay] = useState(false);
 
+  // Add this function after your other fetch functions
+  const fetchCurrentGameState = async () => {
+    if (!gameId) return;
+    await checkProcessingState();
+    try {
+      // Fetch game status
+      const { data: game, error: gameError } = await supabase
+        .from("mermurs_games")
+        .select("*")
+        .eq("id", gameId)
+        .single();
+
+      if (gameError || !game) {
+        toast.error("Game not found or has ended.");
+        router.push("/");
+        return;
+      }
+
+      setGameStatus(game.status);
+      setIsReview(game.is_review ?? false);
+      setGameInProgress(
+        game.status === "start_game" ||
+          game.status === "in_progress" ||
+          game.status === "review"
+      );
+
+      // If it's review mode, fetch the review data
+      if (game.is_review && game.status === "review") {
+        await fetchReviewData();
+      }
+
+      // Fetch latest round and phrase
+      const { data: latestRound } = await supabase
+        .from("mermurs_rounds")
+        .select("*")
+        .eq("game_id", gameId)
+        .order("round_number", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (latestRound) {
+        setRound(latestRound.round_number);
+
+        // Set timer if round is active
+        if (latestRound.start_time) {
+          const start = new Date(latestRound.start_time).getTime();
+          const now = Date.now();
+          const remaining = Math.max(ROUND_TIMER - (now - start) / 1000, 0);
+
+          setStartTimeFromSupabase(latestRound.start_time);
+          setTimerRemaining(remaining);
+        }
+
+        // Fetch assigned phrase for current round
+        const { data: phraseRow } = await supabase
+          .from("mermurs_phrases")
+          .select("id,text,audio,assist_text")
+          .eq("player_id", playerUUID)
+          .eq("round_id", latestRound.id)
+          .maybeSingle();
+
+        if (phraseRow) {
+          setAssignedPhrase({
+            id: phraseRow.id,
+            text: phraseRow.text,
+            audio: phraseRow.audio,
+            assist_text: phraseRow.assist_text,
+            round_id: latestRound.id,
+          });
+        }
+      }
+
+      setLobbyValid(true);
+    } catch (error) {
+      console.error("Error fetching game state:", error);
+      toast.error("Failed to load game state");
+    }
+  };
+
+  // Add this function to fetch review data
+  const fetchReviewData = async () => {
+    if (!gameId) return;
+
+    const { data, error } = await supabase
+      .from("mermurs_phrases")
+      .select("*,mermurs_players(*)")
+      .eq("game_id", gameId);
+
+    if (error || !data) {
+      console.error("Error fetching review phrases:", error);
+      return;
+    }
+
+    // Build the chains (same logic as in admin page)
+    const childMap = new Map<string, Phrase>();
+    for (const phrase of data) {
+      if (phrase.original_phrase_id) {
+        childMap.set(phrase.original_phrase_id, phrase);
+      }
+    }
+
+    function buildForwardChain(rootId: string): Phrase[] {
+      const chain: Phrase[] = [];
+      let current = data?.find((p) => p.id === rootId);
+      while (current) {
+        chain.push(current);
+        current = childMap.get(current.id);
+      }
+      return chain;
+    }
+
+    const rootPhrases = data.filter((p) => !p.original_phrase_id);
+    const chains: Phrase[][] = rootPhrases.map((root) =>
+      buildForwardChain(root.id)
+    );
+
+    setReviewPhrases(chains);
+  };
+
+  useEffect(() => {
+    if (playerName && gameId && playerUUID) {
+      fetchCurrentGameState();
+    }
+  }, [playerName, gameId, playerUUID]);
+
+  const checkProcessingState = async () => {
+    if (!gameId) return;
+
+    // Check if we're between rounds (last round has recordings but no next round yet)
+    const { data: rounds } = await supabase
+      .from("mermurs_rounds")
+      .select("*")
+      .eq("game_id", gameId)
+      .order("round_number", { ascending: false })
+      .limit(2);
+
+    if (rounds && rounds.length > 0) {
+      const latestRound = rounds[0];
+
+      // Check if all recordings are complete for the latest round
+      const { data: recordings } = await supabase
+        .from("mermurs_recordings")
+        .select("id")
+        .eq("round_id", latestRound.id);
+
+      const { data: phrases } = await supabase
+        .from("mermurs_phrases")
+        .select("id")
+        .eq("round_id", latestRound.id);
+
+      // If all recordings exist but no next round phrases, we're likely processing
+      if (
+        recordings &&
+        phrases &&
+        recordings.length === phrases.length &&
+        recordings.length > 0
+      ) {
+        // Check if there's a next round
+        const { data: nextRoundPhrases } = await supabase
+          .from("mermurs_phrases")
+          .select("id")
+          .eq("game_id", gameId)
+          .eq("round_number", latestRound.round_number + 1)
+          .limit(1);
+
+        if (!nextRoundPhrases || nextRoundPhrases.length === 0) {
+          setProcessingOverlay(true);
+        }
+      }
+    }
+  };
+
   useEffect(() => {
     const storedName = sessionStorage.getItem("playerName");
     const storedUUID = sessionStorage.getItem("playerUUID");
@@ -72,7 +244,7 @@ export default function GameLobbyPage() {
 
       const { data: game, error: gameError } = await supabase
         .from("mermurs_games")
-        .select("status, is_review")
+        .select("status, is_review, is_processing")
         .eq("id", gameId)
         .single();
 
@@ -84,12 +256,17 @@ export default function GameLobbyPage() {
 
       setGameStatus(game.status);
       setIsReview(game.is_review ?? false);
+      setProcessingOverlay(game.is_processing ?? false);
       setGameInProgress(
         game.status === "start_game" ||
           game.status === "in_progress" ||
           game.status === "review"
       );
       setLobbyValid(true);
+
+      if (game.is_review || game.status === "review") {
+        await fetchReviewData();
+      }
 
       // Fetch latest round
       const { data: rounds } = await supabase
@@ -168,9 +345,11 @@ export default function GameLobbyPage() {
           const updatedStatus = payload.new.status;
           setCountdownDone(false);
           setGameStatus(updatedStatus);
-          setProcessingOverlay(false);
+          setProcessingOverlay(payload.new.is_processing);
           setGameInProgress(
-            updatedStatus === "start_game" || updatedStatus === "in_progress"
+            updatedStatus === "start_game" ||
+              updatedStatus === "in_progress" ||
+              updatedStatus === "review"
           );
         }
       )
@@ -304,89 +483,109 @@ export default function GameLobbyPage() {
   }
 
   return (
-    <div className="px-6 pt-1 pb-3 space-y-6 grow flex flex-col relative max-w-md mx-auto w-full">
-      {gameStatus === "start_game" && !countdownDone && (
-        <Countdown onComplete={() => setCountdownDone(true)} />
-      )}
-      {!gameInProgress ||
-      round === 0 ||
-      (gameStatus === "start_game" && !countdownDone) ? (
-        <>
-          {/* Always show these during waiting AND countdown */}
-          <PlayerScrollBar members={members} uuid={playerUUID} />
-          <Instructions />
-          <div className="flex items-center space-x-4 opacity-75">
-            <Loader2 className="w-8 h-8 text-white animate-spin" />
-            <p className="text-white text-sm text-center font-semibold">
-              WAITING FOR THE HOST TO SET UP AND TO START THE GAME ;)
-            </p>
+    <>
+      {processingOverlay && (
+        <div className="fixed inset-0 z-50 bg-black bg-opacity-80 flex items-center justify-center">
+          <div className="text-white text-xl font-semibold flex items-center gap-4">
+            <Loader2 className="animate-spin w-6 h-6" />
+            Preparing next round...
           </div>
-          <Button
-            onClick={() => handleLeaveGame()}
-            variant="destructive"
-            className="mt-auto"
-          >
-            Leave Game
-          </Button>
-        </>
-      ) : isReview ? (
-        <>
-          <PlayerScrollBar members={members} uuid={playerUUID} />
-          {reviewPhrases && (
-            <ReviewAlbumPage lobbyId={lobbyId} chains={reviewPhrases} />
-          )}
-        </>
-      ) : (
-        <>
-          {processingOverlay && (
-            <div className="fixed inset-0 z-50 bg-black bg-opacity-80 flex items-center justify-center m-0">
-              <div className="text-white text-xl font-semibold flex items-center gap-4">
-                <Loader2 className="animate-spin w-6 h-6" />
-                Preparing next round...
+        </div>
+      )}
+
+      <div className="px-6 pt-1 pb-3 space-y-6 grow flex flex-col relative max-w-md mx-auto w-full">
+        {gameStatus === "start_game" && !countdownDone && (
+          <Countdown onComplete={() => setCountdownDone(true)} />
+        )}
+
+        {!gameInProgress ||
+        round === 0 ||
+        (gameStatus === "start_game" && !countdownDone) ? (
+          <>
+            {/* Waiting state */}
+            <PlayerScrollBar members={members} uuid={playerUUID} />
+            <Instructions />
+            <div className="flex items-center space-x-4 opacity-75">
+              <Loader2 className="w-8 h-8 text-white animate-spin" />
+              <p className="text-white text-sm text-center font-semibold">
+                WAITING FOR THE HOST TO SET UP AND TO START THE GAME ;)
+              </p>
+            </div>
+            <Button
+              onClick={() => handleLeaveGame()}
+              variant="destructive"
+              className="mt-auto"
+            >
+              Leave Game
+            </Button>
+          </>
+        ) : gameStatus === "review" || isReview ? (
+          <>
+            {/* Review mode */}
+            <PlayerScrollBar members={members} uuid={playerUUID} />
+            {reviewPhrases && reviewPhrases.length > 0 ? (
+              <ReviewAlbumPage lobbyId={lobbyId} chains={reviewPhrases} />
+            ) : (
+              <div className="flex items-center space-x-4 opacity-75">
+                <Loader2 className="w-8 h-8 text-white animate-spin" />
+                <p className="text-white text-sm text-center font-semibold">
+                  Loading review data...
+                </p>
+              </div>
+            )}
+            <Button
+              onClick={() => handleLeaveGame()}
+              variant="destructive"
+              className="mt-auto"
+            >
+              Leave Game
+            </Button>
+          </>
+        ) : (
+          <>
+            {/* Regular game play */}
+            <div className="flex items-center justify-between fixed top-2.5 px-2.5 left-0 right-0 w-full">
+              <p className="bg-white text-black rounded-lg py-2 px-2.5 font-semibold">
+                Round: {round}
+              </p>
+              <div className="w-10 h-10 rounded-full border-2 border-white flex justify-center items-center">
+                {timerRemaining !== null && startTimeFromSupabase && (
+                  <CountdownTimer
+                    duration={timerRemaining}
+                    startTime={Date.parse(startTimeFromSupabase)}
+                    size={24}
+                    onComplete={() => console.log("Done!")}
+                  />
+                )}
               </div>
             </div>
-          )}
-          {/* Game has started & countdown is done */}
-          <div className="flex items-center justify-between fixed top-2.5 px-2.5 left-0 right-0 w-full">
-            <p className="bg-white text-black rounded-lg py-2 px-2.5 font-semibold">
-              Round: {round}
-            </p>
-            <div className="w-10 h-10 rounded-full border-2 border-white flex justify-center items-center">
-              {timerRemaining !== null && startTimeFromSupabase && (
-                <CountdownTimer
-                  duration={timerRemaining}
-                  startTime={Date.parse(startTimeFromSupabase)} // ✅ Now it's defined
-                  size={24}
-                  onComplete={() => console.log("Done!")}
-                />
-              )}
+            <div className="flex justify-center relative">
+              <Image
+                src={"/MERMURS.png"}
+                width={90}
+                height={90}
+                alt={"MerMurs Logo"}
+                className="mx-auto m-5"
+              />
             </div>
-          </div>
-          <div className="flex justify-center relative">
-            <Image
-              src={"/MERMURS.png"}
-              width={90}
-              height={90}
-              alt={"MerMurs Logo"}
-              className="mx-auto m-5"
-            />
-          </div>
-          <p>{assignedPhrase && assignedPhrase.text}</p>
-          <p>{assignedPhrase && assignedPhrase.assist_text}</p>
-          {assignedPhrase && <CustomAudioPlayer url={assignedPhrase.audio} />}
-          {assignedPhrase && (
-            <Recorder
-              key={assignedPhrase.audio}
-              playerId={playerUUID}
-              phraseId={assignedPhrase.id}
-              roundId={assignedPhrase.round_id}
-              channel={channelRef.current}
-              gameId={gameId || ""}
-            />
-          )}
-          {isReview && "Review Mode"}
-        </>
-      )}
-    </div>
+            {assignedPhrase && (
+              <>
+                <p>{assignedPhrase.text}</p>
+                <p>{assignedPhrase.assist_text}</p>
+                <CustomAudioPlayer url={assignedPhrase.audio} />
+                <Recorder
+                  key={assignedPhrase.audio}
+                  playerId={playerUUID}
+                  phraseId={assignedPhrase.id}
+                  roundId={assignedPhrase.round_id}
+                  channel={channelRef.current}
+                  gameId={gameId || ""}
+                />
+              </>
+            )}
+          </>
+        )}
+      </div>
+    </>
   );
 }
