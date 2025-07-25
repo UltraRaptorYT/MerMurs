@@ -59,7 +59,7 @@ export default function ReviewAlbumDisplay({ chain }: { chain: Phrase[] }) {
   return (
     <>
       <h1 className="text-2xl font-bold mb-4 text-center">
-        {currentPlayer}'s Review
+        {currentPlayer}&apos;s Review
       </h1>
       <div className="space-y-4 overflow-auto  max-h-[calc(100dvh-180px)]">
         {chain.slice(0, visibleIndex + 1).map((p, index) => {
