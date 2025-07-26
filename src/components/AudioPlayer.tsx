@@ -3,18 +3,21 @@
 import { useEffect, useRef, useState } from "react";
 import ReactAudioPlayer from "react-audio-player";
 import { Button } from "@/components/ui/button";
-import { PlayCircle, StopCircle } from "lucide-react";
+import { Download, PlayCircle, StopCircle } from "lucide-react";
+import DownloadButton from "@/components/DownloadButton";
 
 type CustomAudioPlayerProps = {
   url: string;
   autoplay?: boolean;
   onEnded?: (e: Event) => void;
+  download?: boolean;
 };
 
 export default function CustomAudioPlayer({
   url,
   autoplay = false,
   onEnded,
+  download = false,
 }: CustomAudioPlayerProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
@@ -72,6 +75,11 @@ export default function CustomAudioPlayer({
         <Button onClick={handleStop}>
           <StopCircle /> Stop
         </Button>
+        {download && (
+          <DownloadButton fileUrl={url}>
+            <Download />
+          </DownloadButton>
+        )}
       </div>
     </div>
   );

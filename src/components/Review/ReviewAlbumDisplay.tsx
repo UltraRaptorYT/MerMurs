@@ -102,10 +102,15 @@ export default function ReviewAlbumDisplay({ chain }: { chain: Phrase[] }) {
                             setShowRecorded(true);
                             setShowTypingPlayer(true); // 👈 start next Typing...
                           }}
+                          download={true}
                         />
                       ) : (
                         index < visibleIndex && (
-                          <CustomAudioPlayer url={p.audio} autoplay={false} />
+                          <CustomAudioPlayer
+                            url={p.audio}
+                            autoplay={false}
+                            download={true}
+                          />
                         )
                       )}
                     </>
@@ -144,6 +149,7 @@ export default function ReviewAlbumDisplay({ chain }: { chain: Phrase[] }) {
                             setShowTypingMerMur(true); // 👈 for next MerMur
                             setShowTypingPlayer(false);
                           }}
+                          download={true}
                         />
                       )}
                     </div>

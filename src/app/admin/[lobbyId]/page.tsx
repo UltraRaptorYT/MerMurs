@@ -14,6 +14,7 @@ import CountdownTimer from "@/components/CountdownTimer";
 import { ROUND_TIMER, STARTING_PHRASE } from "@/contants";
 import ReviewAlbumPage from "@/components/Review/ReviewAlbumPage";
 import Image from "next/image";
+import PlayerScrollBar from "@/components/PlayerScrollBar";
 
 export default function AdminLobbyPage() {
   const supabase = createSupabaseClient();
@@ -587,13 +588,15 @@ export default function AdminLobbyPage() {
                   </div>
                 </CardContent>
               </Card>
-              <Image
-                src={`http://api.qrserver.com/v1/create-qr-code/?data=${process.env.NEXT_PUBLIC_BASE_URL}/game/${lobbyId}&size=300x300&margin=25&color=#000000`}
-                width={200}
-                height={200}
+              {currentGame.status === "waiting" && (
+                <Image
+                  src={`http://api.qrserver.com/v1/create-qr-code/?data=${process.env.NEXT_PUBLIC_BASE_URL}/game/${lobbyId}&size=300x300&margin=25&color=#000000`}
+                  width={200}
+                  height={200}
                   alt={"MerMurs Logo"}
                   className="rounded-lg"
-              />
+                />
+              )}
             </div>
 
             <div className="space-x-4">
@@ -641,11 +644,14 @@ export default function AdminLobbyPage() {
         )}
 
         {reviewPhrases && reviewPhrases?.length > 0 && (
-          <ReviewAlbumPage
-            chains={reviewPhrases}
-            lobbyId={lobbyId}
-            isAdmin={true}
-          />
+          <>
+            <PlayerScrollBar members={members} />
+            <ReviewAlbumPage
+              chains={reviewPhrases}
+              lobbyId={lobbyId}
+              isAdmin={true}
+            />
+          </>
         )}
 
         <div className="mt-6">
