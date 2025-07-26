@@ -30,7 +30,19 @@ export const STARTING_PHRASE = [
     audio: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/syai-mermurs/exam.mp3`,
   },
   {
-    text: "He walk so fast, I think he training for MRT Olympics."",
+    text: "He walk so fast, I think he training for MRT Olympics.",
     audio: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/syai-mermurs/olympics.mp3`,
+  },
+  {
+    text: "Last time you think I blur blur, now I pong three times straight. Don’t play play ah!",
+    audio: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/syai-mermurs/playplay.mp3`,
+  },
+  {
+    text: "He spill kopi on boss’ laptop, then next week become team lead. Liddat also can ah?",
+    audio: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/syai-mermurs/liddat.mp3`,
+  },
+  {
+    text: "Yesterday she say she single, today she post 'date night' on Insta. Wah, her pattern more than badminton sia.",
+    audio: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/syai-mermurs/badminton.mp3`,
   },
 ];
