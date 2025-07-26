@@ -45,4 +45,12 @@ export const STARTING_PHRASE = [
     text: "Yesterday she say she single, today she post 'date night' on Insta. Wah, her pattern more than badminton sia.",
     audio: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/syai-mermurs/badminton.mp3`,
   },
+  {
+    text: "I see your Insta got A&W, massage, bak kut teh. Eh hello, bo jio!",
+    audio: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/syai-mermurs/bojio.mp3`,
+  },
+  {
+    text: "Wah, you tell me you good at DIY. I thought you more zai than that! Now the shelf fall down liao.",
+    audio: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/syai-mermurs/zai.mp3`,
+  },
 ];
