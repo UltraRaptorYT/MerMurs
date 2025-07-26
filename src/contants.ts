@@ -17,4 +17,20 @@ export const STARTING_PHRASE = [
     text: "Walao, this kopi peng got more ice than Marina Bay.",
     audio: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/syai-mermurs/ecf109d0-4479-4c51-9d46-f6fb624a5a99.mp3`,
   },
+  {
+    text: "Wah lao eh, MRT again spoil ah? I late again confirm kena lecture one.",
+    audio: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/syai-mermurs/mrt.mp3`,
+  },
+  {
+    text: "You blur like sotong sia, even Google also cannot help you already.",
+    audio: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/syai-mermurs/google.mp3`,
+  },
+  {
+    text: "Aiyo, my exam just now really jialat sia, like write until hallucinate already.",
+    audio: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/syai-mermurs/exam.mp3`,
+  },
+  {
+    text: "He walk so fast, I think he training for MRT Olympics."",
+    audio: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/syai-mermurs/olympics.mp3`,
+  },
 ];
